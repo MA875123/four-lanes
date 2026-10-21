@@ -399,7 +399,21 @@ const FLT=[['all','All'],['fav','Favourites'],['slow','Slow'],['mid','Medium'],[
 function fLabel(){const f=FLT.find(x=>x[0]===lf)||FLT[0];$('fbtn').textContent='Filter: '+f[1]}
 function fRender(){const h=$('fbody');h.innerHTML='';FLT.forEach(([k,l])=>{const b=document.createElement('button');b.className='alt';b.textContent=l;b.setAttribute('aria-pressed',lf===k);b.onclick=()=>{lf=k;renderMenu();$('fpop').classList.add('hide')};h.appendChild(b)})}
 /* audio unlock: browsers keep audio suspended until a tap, which made music and countdowns stall */
-function acUnlock(){try{if(!ac)ac=new (window.AudioContext||window.webkitAudioContext)();if(ac.state!=='running'&&state!=='pause'){ac.resume().catch(()=>{});const b=ac.createBuffer(1,1,22050),sr=ac.createBufferSource();sr.buffer=b;sr.connect(ac.destination);sr.start(0)}}catch(e){}}
+let acRt=0;
+function acUnlock(){
+  try{
+    if(!ac){ac=new (window.AudioContext||window.webkitAudioContext)();ac.onstatechange=()=>{if(ac.state!=='running'&&!document.hidden&&state==='play')ac.resume().catch(()=>{})}}
+    if(!acUnlock.s){acUnlock.s=1;
+      try{if(navigator.audioSession)navigator.audioSession.type='playback'}catch(e){}
+      if(matchMedia('(pointer:coarse)').matches){/* a silent looping clip makes iOS play Web Audio even when the mute switch is on */
+        const d=new DataView(new ArrayBuffer(8044)),w=(q,t)=>{for(let i=0;i<t.length;i++)d.setUint8(q+i,t.charCodeAt(i))};
+        w(0,'RIFF');d.setUint32(4,8036,true);w(8,'WAVEfmt ');d.setUint32(16,16,true);d.setUint16(20,1,true);d.setUint16(22,1,true);d.setUint32(24,8000,true);d.setUint32(28,16000,true);d.setUint16(32,2,true);d.setUint16(34,16,true);w(36,'data');d.setUint32(40,8000,true);
+        const a=document.createElement('audio');a.src=URL.createObjectURL(new Blob([d],{type:'audio/wav'}));a.loop=true;a.setAttribute('playsinline','');a.play().catch(()=>{acUnlock.s=0});
+      }
+    }
+    if(ac.state!=='running'&&state!=='pause'){ac.resume().catch(()=>{});const b=ac.createBuffer(1,1,22050),sr=ac.createBufferSource();sr.buffer=b;sr.connect(ac.destination);sr.start(0)}
+  }catch(e){}
+}
 /* ---- backup file (.fl4): settings, profile, playlists, charts, replays and imported songs ---- */
 async function bkSave(){
   const msg=t=>{$('bkmsg').textContent=t};msg('Building backup...');
@@ -1042,6 +1056,7 @@ function drawCd(now){
   if(cdUntil&&state==='pause'&&performance.now()>=cdUntil){cdUntil=0;ac.resume();state='play'}
   if(replaying)return;
   let n=0;
+  if(state==='play'&&ac&&ac.state!=='running'){g.save();g.textAlign='center';g.fillStyle=INK;g.font='800 16px Bricolage Grotesque,system-ui,sans-serif';g.fillText('Tap the screen to turn on sound',W/2,H*.42+72);g.restore()}
   if(cdUntil&&state==='pause')n=Math.ceil((cdUntil-performance.now())/1000);
   else if(state==='play'&&now<-.3)n=Math.ceil(-now-.3);
   if(n>=1&&n<=3){g.save();g.textAlign='center';g.globalAlpha=.92;g.fillStyle=INK;g.font='800 110px Bricolage Grotesque,system-ui,sans-serif';g.fillText(String(n),W/2,H*.42);g.font='800 16px Bricolage Grotesque,system-ui,sans-serif';g.fillText('Get ready',W/2,H*.42+34);g.restore()}
@@ -1107,6 +1122,7 @@ function draw(){
   g.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--panel').trim()||'#1c1838';
   if(vidOn||artOn){g.clearRect(0,0,W,H);g.fillStyle='rgba(12,10,28,'+(1-settings.vdim)+')';g.fillRect(0,0,W,H)}else g.fillRect(0,0,W,H);
   const playing=state==='play'||state==='pause'||state==='end';
+  if(state==='play'&&ac&&ac.state!=='running'&&performance.now()-acRt>600){acRt=performance.now();ac.resume().catch(()=>{})}
   const now=playing?clock():0;
   if(vidOn){const v=$('vid');v.playbackRate=replaying?rpSpeed:1;
     if(state==='play'){const tt=now-LEAD;if(tt>=0){if(Math.abs(v.currentTime-tt)>.3)v.currentTime=tt;if(v.paused)v.play().catch(()=>{})}}
@@ -1235,7 +1251,7 @@ function ensureLoaded(o){
   return o.loading;
 }
 async function loadLibrary(){
-  try{((await dbAll('songs'))||[]).sort((a,b)=>a.added-b.added).forEach(r=>{if(!SONGS.some(x=>x.recId===r.id))SONGS.splice(SONGS.length-1,0,libEntry(r))})}catch(e){}
+  try{const rows=(await dbAll('songs'))||[];for(const r of rows)if(r.fp){try{await dbDel('songs',r.id)}catch(e){}}rows.filter(r=>!r.fp).sort((a,b)=>a.added-b.added).forEach(r=>{if(!SONGS.some(x=>x.recId===r.id))SONGS.splice(SONGS.length-1,0,libEntry(r))})}catch(e){}
   syncChartSongs();renderMenu();
 }
 async function libDelete(o){
@@ -1596,8 +1612,10 @@ function mpPeers(){
   if(!mp.host){
     if(!h){mp.hostGone=mp.hostGone||Date.now();if(Date.now()-mp.hostGone>3000){mpLeave('The host left the lobby.');return}}
     else{
-      mp.hostGone=0;mp.pub=!!h.presence.pub;{const hc=mst(h.presence.cid,20);if(h.presence.song==='mpx'&&h.presence.au&&hc&&mp.need!==hc)mpNeed(hc,mst(h.presence.fp,30));
-      if(mp.cs&&!mp.cs.done&&!mp.cs.failed&&Date.now()-mp.cs.last>25000){mp.cs=null;mp.need='';toast('Song download stalled. Trying again...')}}
+      mp.hostGone=0;mp.pub=!!h.presence.pub;{const hc=mst(h.presence.cid,20);if(h.presence.song==='mpx'&&h.presence.au&&hc&&mp.need!==hc)mpNeed(hc,h.presence);
+      else if(h.presence.song!=='mpx'&&!mp.playing&&(mp.cs||mp.cv))mpFreeMedia();
+      if(mp.cs&&!mp.cs.done&&!mp.cs.failed&&Date.now()-mp.cs.last>25000){mp.cs=null;mp.need='';toast('Song download stalled. Trying again...')}
+      if(mp.cv&&!mp.cv.done&&!mp.cv.failed&&Date.now()-mp.cv.last>25000){mp.cv=null;if(mp.cs&&mp.cs.done)mp.r.msg({k:'need',cid:hc,w:'v'});toast('Video download stalled. Trying again...')}}
       const go=mcl(h.presence.go,0,1e6);
       if(go>mp.lastGo){mp.lastGo=go;mpStartMatch(mst(h.presence.song,40),mst(h.presence.diff,20))}
     }
@@ -1634,7 +1652,7 @@ function mpRenderLobby(){
     const pr=p.presence||{},row=document.createElement('div');row.className='rrow';
     const t=document.createElement('span');
     t.textContent=(mst(pr.bd,2)?mst(pr.bd,2)+' ':'')+(mst(pr.n,16)||'Player')+' (Lv '+mcl(pr.lv,1,100)+')'+(p.isMe?' - you':'')+(pr.host===1?' - host':'');
-    const st=document.createElement('span');st.textContent=pr.host===1?'':(hpr.song==='mpx'&&hpr.au&&pr.hs!==hpr.cid?(pr.dl>=0?'Downloading '+mcl(pr.dl,0,100)+'%':'Waiting for song'):(pr.rd?'Ready':'Not ready'));
+    const st=document.createElement('span');st.textContent=pr.host===1?'':(hpr.song==='mpx'&&hpr.au&&pr.hs!==hpr.cid?(pr.dl>=0?'Downloading '+mcl(pr.dl,0,100)+'%':'Waiting for song'):(hpr.song==='mpx'&&hpr.vd&&pr.hv!==hpr.cid?(pr.vl>=0?'Video '+mcl(pr.vl,0,100)+'%':'Waiting for video'):(pr.rd?'Ready':'Not ready')));
     row.append(t,st);if(mp.host&&!p.isMe){const kb=document.createElement('button');kb.className='alt chip';kb.textContent='Kick';kb.onclick=()=>{mp.r.kick(p.peer);toast('Removed '+(mst(pr.n,16)||'player'))};row.appendChild(kb)}box.appendChild(row);
   });
   const others=ps.filter(p=>!p.isMe).length,me=ps.find(p=>p.isMe);
@@ -1670,22 +1688,25 @@ async function mpPackage(){
   if(kind==='aud'){await ensureLoaded(b);if(!b.buf||!b.an){toast('Could not load that song.');return false}if(mp.cs&&mp.cs.cid===b.recId)mp.cs.buf=b.buf;else mp.cs={cid:b.recId,buf:b.buf,blob:b.blob,done:true,meta:{name:b.name,fp:b.fp,bpm:b.bpm,dur:b.buf.duration}}}
   const arr=kind==='aud'?mpNotesFor(s,di):s.cnotes.map(n=>[n[0],n[1]]);
   if(!arr||!arr.length){toast('Could not build that chart.');return false}
-  const id=Date.now().toString(36),n=Math.ceil(arr.length/500),meta={k:'pk',id,kind,cid:b.recId||'',name:s.name,base:b.id,bpm:kind==='aud'?+(b.bpm||120):(s.cbpm||b.bpm),off:s.coff||0,n};
+  const id=Date.now().toString(36),n=Math.ceil(arr.length/500),meta={k:'pk',id,kind,cid:b.recId||'',name:s.name,base:b.id,bpm:kind==='aud'?+(b.bpm||120):(s.cbpm||b.bpm),off:s.coff||0,n,vd:(kind==='aud'&&mp.cv&&mp.cv.done)?1:0};
   mp.r.msg(meta);
   for(let i=0;i<n;i++){mp.r.msg({k:'pn',id,i,part:arr.slice(i*500,i*500+500)});if(i%4===3)await sleep(20)}
-  mp.pk={id,kind,cid:meta.cid,name:meta.name,base:meta.base,bpm:meta.bpm,off:meta.off,n:1,got:1,done:true,parts:{0:arr}};
+  mp.pk={id,kind,cid:meta.cid,name:meta.name,base:meta.base,bpm:meta.bpm,off:meta.off,vd:meta.vd,n:1,got:1,done:true,parts:{0:arr}};
   return true;
 }
 function mpStartCustom(diffId,t){
   if(!mp||mp.playing)return;const k=mp.pk,di=DIFFS.findIndex(d=>d.id===diffId&&!d.auto);
-  const ready=k&&k.done&&di>=0&&(k.kind==='chart'||(mp.cs&&mp.cs.cid===k.cid&&mp.cs.buf));
-  if(!ready){if(t<50)setTimeout(()=>mpStartCustom(diffId,t+1),300);else{toast('The song did not arrive in time. Ask the host to start again.');mpSet({dl:-1})}return}
+  const aOk=k&&k.done&&di>=0&&(k.kind==='chart'||(mp.cs&&mp.cs.cid===k.cid&&mp.cs.buf)),vOk=!k||!k.vd||k.kind==='chart'||!!(mp.cv&&mp.cv.cid===k.cid&&mp.cv.url);
+  if(!(aOk&&vOk)){
+    if(t<100){setTimeout(()=>mpStartCustom(diffId,t+1),150);return}
+    if(!aOk){toast('The song did not arrive in time. Ask the host to start again.');mpSet({dl:-1});return}
+    toast('The video did not arrive in time, so this round plays without it.');
+  }
   mpDropTmp();
   const arr=[].concat(...Object.keys(k.parts).sort((a,b)=>a-b).map(i=>k.parts[i])),ns=arr.map(n=>[+n[0]||0,mcl(n[1],0,3)]);let e;
   if(!ns.length){toast('That chart was empty.');return}
-  if(k.kind==='chart'&&!mp.host&&!k.saved){k.saved=true;const fp=k.name+':'+ns.length+':'+k.base;if(BASES().some(x=>x.id===k.base)&&!charts.some(c=>c.fp===fp)){charts.push({id:Date.now().toString(36),name:k.name,base:k.base,notes:ns.map(n=>n.slice()),bpm:k.bpm,off:k.off,fp});saveCharts();syncChartSongs();toast('Chart saved to your library.')}}
   if(k.kind==='chart'){const b=BASES().find(x=>x.id===k.base);if(!b){toast('You do not have the base song for this chart.');return}e=chartSong({id:'mpx',name:k.name,base:b.id,notes:ns,bpm:k.bpm,off:k.off})}
-  else e={id:'mpc-'+k.cid,custom:true,name:k.name,sub:'Multiplayer song',bpm:k.bpm,beats:96,acc:'#ffb703',buf:mp.cs.buf,an:{beatT:[],bpm:k.bpm,off:0,nf:0,stable:false,conf:0},mpNotes:ns};
+  else{const vu=vOk&&k.vd&&mp.cv?mp.cv.url:null;e={id:'mpc-'+k.cid,custom:true,name:k.name,sub:'Multiplayer song',bpm:k.bpm,beats:96,acc:'#ffb703',buf:mp.cs.buf,video:vu,isVideo:!!vu,an:{beatT:[],bpm:k.bpm,off:0,nf:0,stable:false,conf:0},mpNotes:ns}}
   e.mpTmp=true;SONGS.splice(SONGS.length-1,0,e);
   mpStartMatch('mpx',diffId,SONGS.indexOf(e));
 }
@@ -1697,48 +1718,67 @@ async function mpWav(buf){
   for(let i=0;i<len;i++){const v=Math.max(-1,Math.min(1,x[i]));o.setInt16(44+i*2,v<0?v*32768:v*32767,true)}
   return new Blob([o],{type:'audio/wav'});
 }
-async function mpSendAudio(to){
-  const c=mp&&mp.cs;if(!c||!c.blob)return;mp.sending=mp.sending||{};if(mp.sending[to])return;mp.sending[to]=1;
+async function mpSendBlob(to,w){
+  const c=w==='v'?mp.cv:mp.cs;if(!c||!c.blob)return;const key=to+w;mp.sending=mp.sending||{};if(mp.sending[key])return;mp.sending[key]=1;
+  const mk=w==='v'?'vm':'am',ck=w==='v'?'vc':'ac',m=c.meta||{};
   try{
     const CH=32768,n=Math.ceil(c.blob.size/CH);
-    mp.r.msg({k:'am',cid:c.cid,n,mime:c.blob.type||'audio/mpeg',nm:c.meta.name,fp:c.meta.fp,bp:c.meta.bpm,du:c.meta.dur},to);
+    mp.r.msg({k:mk,cid:c.cid,n,mime:c.blob.type||(w==='v'?'video/mp4':'audio/mpeg'),nm:m.name,fp:m.fp,bp:m.bpm,du:m.dur},to);
     for(let i=0;i<n;i++){
       let bf;while((bf=mp&&mp.r.buffered(to))>1.5e6)await sleep(40);
-      if(!mp||mp.cs!==c||bf<0)return;
-      mp.r.msg({k:'ac',cid:c.cid,i,b:await c.blob.slice(i*CH,(i+1)*CH).arrayBuffer()},to);
+      if(!mp||(w==='v'?mp.cv:mp.cs)!==c||bf<0)return;
+      mp.r.msg({k:ck,cid:c.cid,i,b:await c.blob.slice(i*CH,(i+1)*CH).arrayBuffer()},to);
     }
-  }finally{if(mp&&mp.sending)mp.sending[to]=0}
+  }finally{if(mp&&mp.sending)mp.sending[key]=0}
 }
-async function mpNeed(hc,fp){
-  mp.need=hc;const loc=fp&&SONGS.find(x=>x.lib&&x.fp===fp);
-  if(loc){await ensureLoaded(loc);if(loc.buf&&mp&&mp.need===hc){mp.cs={cid:hc,buf:loc.buf,done:true,last:Date.now()};mpSet({dl:100,hs:hc});return}}
-  if(mp)mp.r.msg({k:'need',cid:hc});
+function mpFreeMedia(m){
+  m=m||mp;if(!m)return;
+  if(m.cv&&m.cv.url&&!m.cv.local){try{URL.revokeObjectURL(m.cv.url)}catch(e){}}
+  if(!m.host){m.cs=null;m.cv=null}
+  m.need='';m.vwant=0;
 }
-async function mpSaveSong(c){
-  if(c.saved||!c.meta||!c.meta.fp)return;c.saved=true;
-  if(SONGS.some(x=>x.lib&&x.fp===c.meta.fp))return;
-  const rec={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),name:c.meta.name,blob:new Blob(c.parts,{type:c.mime||'audio/mpeg'}),isVideo:false,art:null,an:null,bpm:c.meta.bpm,dur:c.meta.dur||(c.buf&&c.buf.duration)||0,added:Date.now(),fp:c.meta.fp};
-  try{await dbPut('songs',rec);const o=libEntry(rec);o.fp=rec.fp;o.sub='From multiplayer, '+o.sub;SONGS.splice(SONGS.length-1,0,o);toast('Saved "'+rec.name+'" to your library.')}catch(e){}
+async function mpNeed(hc,pr){
+  mpFreeMedia();mp.need=hc;mp.vwant=pr.vd?1:0;
+  const fp=mst(pr.fp,30),nm=mst(pr.nm,40),du=+pr.du||0,nrm=t=>String(t||'').toLowerCase().replace(/\s+/g,' ').trim();
+  const loc=SONGS.find(x=>x.lib&&((fp&&x.fp===fp)||(nm&&nrm(x.name)===nrm(nm))));
+  let aOk=false,vOk=!pr.vd;
+  if(loc){
+    await ensureLoaded(loc);if(!mp||mp.need!==hc)return;
+    if(loc.buf&&(loc.fp===fp||!du||Math.abs(loc.buf.duration-du)<1.5)){
+      mp.cs={cid:hc,buf:loc.buf,done:true,last:Date.now()};aOk=true;mpSet({dl:100,hs:hc});
+      if(pr.vd&&loc.video){mp.cv={cid:hc,url:loc.video,done:true,local:1,last:Date.now()};vOk=true;mpSet({vl:100,hv:hc})}
+    }
+  }
+  if(!aOk)mp.r.msg({k:'need',cid:hc,w:'a'});else if(!vOk)mp.r.msg({k:'need',cid:hc,w:'v'});
 }
 async function mpDecode(c){
   try{
     if(!ac)ac=new (window.AudioContext||window.webkitAudioContext)();
     c.buf=await ac.decodeAudioData(await new Blob(c.parts,{type:c.mime||'audio/mpeg'}).arrayBuffer());
-    mpSet({dl:100,hs:c.cid});mpSaveSong(c);
+    c.parts=[];mpSet({dl:100,hs:c.cid});
+    if(mp&&mp.vwant&&(!mp.cv||!mp.cv.done)&&mp.need===c.cid)mp.r.msg({k:'need',cid:c.cid,w:'v'});
   }catch(e){c.failed=true;mpSet({dl:-1});toast('Could not play the host song on this device.')}
 }
 function mpOnMsg(d,from){
   if(!mp||!d)return;
-  if(mp.host){if(d.k==='need'&&mp.cid&&d.cid===mp.cid&&mp.cs&&mp.cs.done&&mp.cs.blob)mpSendAudio(from);return}
+  if(mp.host){if(d.k==='need'&&mp.cid&&d.cid===mp.cid){const w=d.w==='v'?'v':'a',c=w==='v'?mp.cv:mp.cs;if(c&&c.done&&c.blob)mpSendBlob(from,w)}return}
   if(d.k==='kick'){mpLeave('The host removed you from the lobby.');return}
-  if(d.k==='pk'){mp.pk={id:d.id,kind:d.kind==='aud'?'aud':'chart',cid:mst(d.cid,20),name:mst(d.name,40),base:mst(d.base,40),bpm:mcl(d.bpm,40,300),off:+d.off||0,n:mcl(d.n,1,20),got:0,parts:{},done:false};return}
+  if(d.k==='pk'){mp.pk={id:d.id,kind:d.kind==='aud'?'aud':'chart',cid:mst(d.cid,20),name:mst(d.name,40),base:mst(d.base,40),bpm:mcl(d.bpm,40,300),off:+d.off||0,n:mcl(d.n,1,20),vd:d.vd?1:0,got:0,parts:{},done:false};return}
   if(d.k==='pn'&&mp.pk&&mp.pk.id===d.id&&Array.isArray(d.part)&&d.i>=0&&d.i<mp.pk.n){if(!mp.pk.parts[d.i]){mp.pk.parts[d.i]=d.part.slice(0,500);mp.pk.got++}if(mp.pk.got>=mp.pk.n)mp.pk.done=true;return}
-  if(d.k==='am'){mp.cs={cid:mst(d.cid,20),n:mcl(d.n,1,8000),mime:mst(d.mime,40),parts:[],got:0,done:false,last:Date.now(),meta:{name:mst(d.nm,40)||'Multiplayer song',fp:mst(d.fp,30),bpm:mcl(d.bp,40,300),dur:+d.du||0}};return}
+  if(d.k==='am'){mp.cs={cid:mst(d.cid,20),n:mcl(d.n,1,8000),mime:mst(d.mime,40),parts:[],got:0,done:false,last:Date.now()};return}
+  if(d.k==='vm'){mp.cv={cid:mst(d.cid,20),n:mcl(d.n,1,8000),mime:mst(d.mime,40),parts:[],got:0,done:false,last:Date.now()};return}
   if(d.k==='ac'&&mp.cs&&mp.cs.cid===d.cid&&!mp.cs.done&&d.b&&d.i>=0&&d.i<mp.cs.n){
     const c=mp.cs;if(c.parts[d.i])return;
     c.parts[d.i]=d.b;c.got++;c.last=Date.now();
     const pct=Math.floor(c.got/c.n*10)*10;if(pct!==c.lp&&pct<100){c.lp=pct;mpSet({dl:pct})}
     if(c.got>=c.n){c.done=true;mpDecode(c)}
+    return;
+  }
+  if(d.k==='vc'&&mp.cv&&mp.cv.cid===d.cid&&!mp.cv.done&&d.b&&d.i>=0&&d.i<mp.cv.n){
+    const c=mp.cv;if(c.parts[d.i])return;
+    c.parts[d.i]=d.b;c.got++;c.last=Date.now();
+    const pct=Math.floor(c.got/c.n*10)*10;if(pct!==c.lp&&pct<100){c.lp=pct;mpSet({vl:pct})}
+    if(c.got>=c.n){c.done=true;try{c.url=URL.createObjectURL(new Blob(c.parts,{type:c.mime||'video/mp4'}));c.parts=[];mpSet({vl:100,hv:c.cid})}catch(e){c.failed=true;mpSet({vl:-1})}}
   }
 }
 function mpTick(now){
@@ -1794,17 +1834,17 @@ function mpToLobby(){
   if(!mp)return;
   clearTimeout(mp.fto);
   mp.playing=false;mp.finished=false;
-  if(mpMods){settings.mods=mpMods;mpMods=null}bot=mpBot;mpDropTmp();selS=0;
+  if(mpMods){settings.mods=mpMods;mpMods=null}bot=mpBot;mpDropTmp();selS=0;vidOn=false;artOn=false;$('vid').hidden=true;$('art').hidden=true;cv.classList.remove('vid');try{$('vid').pause()}catch(e){}
   ['again','back','rpbtn','rpcmp'].forEach(i=>{$(i).hidden=false});$('mpbackbtn').hidden=true;$('mpres').hidden=true;
   mpSet({st:'lobby',rd:mp.host?1:0,sc:0,cb:0,pg:0,pz:0});
   mpAdvertise();stopAudio();vidOn=false;artOn=false;state='menu';
   mpShowLobby();
 }
 async function mpLeave(msg){
-  if(!mp)return;const m=mp;mp=null;
+  if(!mp)return;const m=mp;mp=null;mpFreeMedia(m);
   clearInterval(m.timer);clearTimeout(m.fto);try{if(m.un)m.un()}catch(e){}
   if(m.host&&rm){try{await rm.advertise(m.code,null)}catch(e){}}
-  if(mpMods){settings.mods=mpMods;mpMods=null}bot=mpBot;mpDropTmp();selS=0;
+  if(mpMods){settings.mods=mpMods;mpMods=null}bot=mpBot;mpDropTmp();selS=0;vidOn=false;artOn=false;$('vid').hidden=true;$('art').hidden=true;cv.classList.remove('vid');try{$('vid').pause()}catch(e){}
   ['again','back','rpbtn','rpcmp'].forEach(i=>{$(i).hidden=false});$('mpbackbtn').hidden=true;$('mpres').hidden=true;
   try{await m.r.leave()}catch(e){}
   if(msg)toast(msg);
@@ -1855,10 +1895,13 @@ $('mpsong').onchange=async()=>{
       let bl=b.blob;
       if(b.isVideo||bl.size>25e6){toast('Making a lighter audio copy to send...');try{bl=await mpWav(b.buf)}catch(e){return bail('Could not prepare that song.')}}
       if(mp.sel!==v)return;
-      mp.cs={cid:b.recId,buf:b.buf,blob:bl,done:true,meta:{name:b.name,fp:b.fp,bpm:b.bpm,dur:b.buf.duration}};mp.cid=b.recId;mp.song='mpx';
-      mpSet({song:'mpx',sn:s.name,cid:mp.cid,au:1,fp:b.fp,hs:mp.cid,dl:100});
-    }else{mp.cid='';mp.song='mpx';mpSet({song:'mpx',sn:s.name,cid:'',au:0})}
-  }else{mp.cid='';mp.song=v;mpSet({song:v,sn:'',cid:'',au:0})}
+      const meta={name:b.name,fp:b.fp,bpm:b.bpm,dur:b.buf.duration};
+      mp.cs={cid:b.recId,buf:b.buf,blob:bl,done:true,meta};mp.cid=b.recId;mp.song='mpx';mp.cv=null;
+      if(b.isVideo&&b.blob.size<=120e6)mp.cv={cid:b.recId,blob:b.blob,done:true,url:b.video,meta};
+      else if(b.isVideo)toast('That video is over 120 MB, so only its audio will be sent.');
+      mpSet({song:'mpx',sn:s.name,cid:mp.cid,au:1,fp:b.fp,nm:b.name,du:b.buf.duration,hs:mp.cid,dl:100,vd:mp.cv?1:0,hv:mp.cv?mp.cid:'',vl:100});
+    }else{mp.cid='';mp.song='mpx';mp.cs=null;mp.cv=null;mpSet({song:'mpx',sn:s.name,cid:'',au:0,vd:0})}
+  }else{mp.cid='';mp.song=v;mp.cs=null;mp.cv=null;mpSet({song:v,sn:'',cid:'',au:0,vd:0})}
   mpAdvertise();mpRenderLobby();
 };
 $('mpdiff').onchange=()=>{if(!mp||!mp.host)return;mp.diff=$('mpdiff').value;mpSet({diff:mp.diff});mpAdvertise();mpRenderLobby()};
@@ -1869,14 +1912,16 @@ $('mpcopy').onclick=()=>{
 };
 $('mpready').onclick=()=>{if(!mp||mp.host)return;{const h0=mpHostPeer();if(h0&&h0.presence.song==='mpx'&&h0.presence.au&&!(mp.cs&&mp.cs.done&&mp.cs.buf&&mp.cs.cid===mst(h0.presence.cid,20))){toast('Still downloading the song...');return}}const me=mp.r.peers().find(p=>p.isMe);mpSet({rd:me&&me.presence&&me.presence.rd?0:1})};
 $('mpstart').onclick=async()=>{
-  if(!mp||!mp.host||mp.playing)return;
+  if(!mp||!mp.host||mp.playing||mp.starting)return;
   const gs=mp.r.peers().filter(p=>!p.isMe);
   if(!gs.length){toast('Waiting for at least one other player.');return}
-  const nr=gs.filter(p=>{const pr=p.presence||{};return !pr.rd||(mp.song==='mpx'&&mp.cid&&pr.hs!==mp.cid)});
+  const nr=gs.filter(p=>{const pr=p.presence||{};return !pr.rd||(mp.song==='mpx'&&mp.cid&&(pr.hs!==mp.cid||(mp.cv&&mp.cv.done&&pr.hv!==mp.cid)))});
   if(nr.length&&Date.now()>(mp.warnT||0)){mp.warnT=Date.now()+4000;toast(mst(nr[0].presence.n,16)+(nr.length>1?' and '+(nr.length-1)+' more are':' is')+' not ready. Press Start again to begin anyway.');return}
-  if(mp.song==='mpx'&&!(await mpPackage()))return;
+  mp.starting=1;
+  if(mp.song==='mpx'&&!(await mpPackage())){if(mp)mp.starting=0;return}
+  if(!mp)return;
   mp.go++;mpSet({go:mp.go,st:'play',song:mp.song,diff:mp.diff});
-  mpStartMatch(mp.song,mp.diff);
+  setTimeout(()=>{if(mp){mp.starting=0;mpStartMatch(mp.song,mp.diff)}},200);
 };
 $('mpsend').onclick=()=>{
   const v=$('mpchat').value.trim();if(!mp||!v)return;
@@ -2120,6 +2165,7 @@ function renderExtra(){
 }
 let charts=[],testingEd=false,ed={base:'drive',name:'My chart',notes:[],sb:0,snap:.5,id:null,bpm:124,off:0,tuned:false},edPrev=null;
 try{charts=JSON.parse(localStorage.getItem('fl:charts'))||[]}catch(e){}
+{const n0=charts.length;charts=charts.filter(c=>!c.fp);if(charts.length!==n0)saveCharts()}
 function saveCharts(){try{localStorage.setItem('fl:charts',JSON.stringify(charts))}catch(e){}}
 const BASES=()=>SONGS.filter(x=>!x.import&&!x.chart&&!x.mpTmp);
 function chartSong(c){
