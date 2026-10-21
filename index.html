@@ -291,6 +291,7 @@ canvas.vid{background:transparent}
     <button class="alt" id="back">Song select</button>
   </div>
 </div>
+<script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
 <script>
 (function(){
 const cv=document.getElementById('c'),g=cv.getContext('2d');
@@ -1171,10 +1172,247 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const mcl=(x,a,b)=>Math.max(a,Math.min(b,+x||0));
 const mst=(x,n)=>String(x==null?'':x).replace(/[<>]/g,'').slice(0,n);
 const ord=n=>n+(n%100>=11&&n%100<=13?'th':['th','st','nd','rd'][n%10]||'th');
+
+/* PeerJS makes the static GitHub Pages build able to play online without the
+   ChatGPT/Claude artifact room API. Game state is relayed through the host. */
+const MP_DIRECTORY_ID='four-lanes-ma875123-directory';
+function mpPeerOptions(){
+  return {host:'0.peerjs.com',port:443,path:'/',secure:true,debug:0,
+    config:{iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}]}};
+}
+function mpWaitPeer(peer,timeout=10000){
+  return new Promise((resolve,reject)=>{
+    let settled=false;
+    const timer=setTimeout(()=>finish(false,new Error('Timed out connecting to the multiplayer service.')),timeout);
+    function finish(ok,value){if(settled)return;settled=true;clearTimeout(timer);ok?resolve(value):reject(value);}
+    peer.on('open',id=>finish(true,id));
+    peer.on('error',err=>{if(!settled)finish(false,err||new Error('Could not connect to the multiplayer service.'));});
+  });
+}
+function mpWaitConnection(conn,timeout=9000){
+  return new Promise((resolve,reject)=>{
+    let settled=false;
+    const timer=setTimeout(()=>finish(false,new Error('Could not connect to that lobby. It may be closed or your network may block peer-to-peer connections.')),timeout);
+    function finish(ok,value){if(settled)return;settled=true;clearTimeout(timer);ok?resolve(value):reject(value);}
+    conn.on('open',()=>finish(true,conn));
+    conn.on('error',err=>finish(false,err||new Error('Could not connect to that lobby.')));
+    if(conn.open)finish(true,conn);
+  });
+}
+function createPeerRoomService(){
+  let probe=null,dirPeer=null,directoryOwner=false;
+  const publicRooms=new Map(),watchers=new Set();
+  const notify=()=>watchers.forEach(fn=>{try{fn()}catch(e){}});
+  const peerIdFor=key=>'four-lanes-ma875123-'+String(key).replace(/^mp-/,'');
+  function prune(){
+    const now=Date.now();let changed=false;
+    publicRooms.forEach((v,k)=>{if(now-v.updated>30000){publicRooms.delete(k);changed=true}});
+    if(changed)notify();
+  }
+  function roomList(){
+    prune();
+    return [...publicRooms.values()].map(x=>({peer:'public-'+x.key,isMe:false,presence:{pl:Object.assign({},x.pl)}}));
+  }
+  function directoryMessage(msg,conn){
+    if(!msg||typeof msg!=='object')return;
+    if(msg.type==='fl4-dir-list'){
+      if(conn)try{conn.send({type:'fl4-dir-list',items:roomList().map(x=>({key:x.presence.pl.c,pl:x.presence.pl}))})}catch(e){}
+      return;
+    }
+    if(msg.type==='fl4-dir-update'){
+      const code=String(msg.key||'');
+      if(!/^\d{6}$/.test(code))return;
+      const pl=msg.pl;
+      if(!pl||typeof pl!=='object'||String(pl.c)!==code){publicRooms.delete(code)}
+      else{
+        publicRooms.set(code,{key:code,pl:{c:code,h:mst(pl.h,16),s:mst(pl.s,40),d:mst(pl.d,20),n:mcl(pl.n,1,8),m:8,t:pl.t==='playing'?'playing':'open'},updated:Date.now()});
+      }
+      if(conn)try{conn.send({type:'fl4-dir-ack'})}catch(e){}
+      notify();
+    }
+  }
+  function initDirectory(){
+    try{
+      dirPeer=new window.Peer(MP_DIRECTORY_ID,mpPeerOptions());
+      dirPeer.on('open',()=>{directoryOwner=true;notify()});
+      dirPeer.on('connection',conn=>{
+        conn.on('data',msg=>directoryMessage(msg,conn));
+        conn.on('open',()=>{});
+      });
+      dirPeer.on('error',err=>{
+        // One browser owns the lightweight directory. Other browsers simply use it.
+        if(err&&err.type==='unavailable-id'){
+          directoryOwner=false;
+          try{dirPeer.destroy()}catch(e){}
+          dirPeer=null;
+        }
+      });
+    }catch(e){directoryOwner=false;dirPeer=null}
+  }
+  async function start(){
+    if(typeof window.Peer!=='function')return false;
+    initDirectory();
+    try{
+      probe=new window.Peer(mpPeerOptions());
+      await mpWaitPeer(probe,10000);
+      setInterval(prune,5000);
+      return true;
+    }catch(e){try{if(probe)probe.destroy()}catch(x){}probe=null;return false}
+  }
+  function connectDirectory(msg,expectList=false){
+    if(directoryOwner){
+      if(expectList)return Promise.resolve(roomList().map(x=>({key:x.presence.pl.c,pl:x.presence.pl})));
+      directoryMessage(msg,null);return Promise.resolve(true);
+    }
+    if(!probe||!probe.open)return expectList?Promise.resolve([]):Promise.resolve(false);
+    return new Promise(resolve=>{
+      let conn=null,settled=false;
+      const timeout=setTimeout(()=>finish(expectList?[]:false),expectList?2600:1800);
+      function finish(result){
+        if(settled)return;settled=true;clearTimeout(timeout);
+        if(conn){try{conn.close()}catch(e){}}
+        resolve(result);
+      }
+      try{conn=probe.connect(MP_DIRECTORY_ID,{reliable:true,serialization:'json'});}
+      catch(e){finish(expectList?[]:false);return}
+      conn.on('open',()=>{try{conn.send(msg)}catch(e){finish(expectList?[]:false)}});
+      conn.on('data',data=>{
+        if(expectList&&data&&data.type==='fl4-dir-list')finish(Array.isArray(data.items)?data.items:[]);
+        else if(!expectList&&data&&data.type==='fl4-dir-ack')finish(true);
+      });
+      conn.on('error',()=>finish(expectList?[]:false));
+      conn.on('close',()=>{if(!settled)finish(expectList?[]:false)});
+    });
+  }
+  async function getPublicLobbies(){
+    const data=await connectDirectory({type:'fl4-dir-list'},true);
+    return (Array.isArray(data)?data:[]).filter(x=>x&&/^\d{6}$/.test(String(x.key||''))&&x.pl&&String(x.pl.c)===String(x.key))
+      .map(x=>({peer:'public-'+x.key,isMe:false,presence:{pl:Object.assign({},x.pl)}}));
+  }
+  async function advertise(code,pl){
+    const key=String(code||'');if(!/^\d{6}$/.test(key))return false;
+    return connectDirectory({type:'fl4-dir-update',key,pl:pl||null},false);
+  }
+  function onPeers(fn){
+    watchers.add(fn);try{fn()}catch(e){}
+    let last='';let busy=false;
+    const timer=setInterval(async()=>{
+      if(busy)return;busy=true;
+      try{const rows=await getPublicLobbies(),sig=JSON.stringify(rows);if(sig!==last){last=sig;try{fn()}catch(e){}}}catch(e){}
+      busy=false;
+    },5000);
+    return ()=>{clearInterval(timer);watchers.delete(fn)};
+  }
+  function makeRoom(peer,isHost,hostConn,key){
+    let ownPresence={},left=false,hostGone=false;
+    const remotes=new Map(),listeners=new Set();
+    const room={
+      key,error:'',
+      peers(){
+        const me={peer:peer.id,isMe:true,presence:Object.assign({},ownPresence)};
+        return [me,...[...remotes.entries()].map(([id,v])=>({peer:id,isMe:false,presence:Object.assign({},v.presence||{})}))];
+      },
+      presence(patch){
+        if(left)return;
+        ownPresence=Object.assign({},ownPresence,patch||{});
+        if(isHost)broadcast();
+        else if(hostConn&&hostConn.open){try{hostConn.send({type:'fl4-presence',patch:patch||{}})}catch(e){}}
+        emit();
+      },
+      onPeers(fn){listeners.add(fn);try{fn()}catch(e){}return ()=>listeners.delete(fn)},
+      async leave(){
+        if(left)return;left=true;
+        if(isHost){
+          for(const v of remotes.values()){try{if(v.conn&&v.conn.open){v.conn.send({type:'fl4-closed'});v.conn.close()}}catch(e){}}
+          remotes.clear();
+        }else if(hostConn){try{if(hostConn.open){hostConn.send({type:'fl4-leave'});hostConn.close()}}catch(e){}}
+        try{peer.destroy()}catch(e){}
+        emit();
+      },
+      get isHost(){return isHost},
+      get hostGone(){return hostGone}
+    };
+    function emit(){listeners.forEach(fn=>{try{fn()}catch(e){}})}
+    function roster(){
+      return [{peer:peer.id,presence:Object.assign({},ownPresence)},...[...remotes.entries()].map(([id,v])=>({peer:id,presence:Object.assign({},v.presence||{})}))];
+    }
+    function sendRoster(to){
+      const msg={type:'fl4-roster',peers:roster()};
+      if(to){try{if(to.open)to.send(msg)}catch(e){};return}
+      if(isHost)for(const v of remotes.values())try{if(v.conn&&v.conn.open)v.conn.send(msg)}catch(e){}
+    }
+    function broadcast(){sendRoster();emit()}
+    function dropRemote(id){if(remotes.delete(id)){broadcast()}}
+    function receive(conn,msg){
+      if(!msg||typeof msg!=='object')return;
+      if(isHost){
+        if(msg.type==='fl4-presence'){
+          const item=remotes.get(conn.peer);if(item){item.presence=Object.assign({},item.presence,msg.patch||{});broadcast()}
+        }else if(msg.type==='fl4-sync')sendRoster(conn);
+        else if(msg.type==='fl4-leave')dropRemote(conn.peer);
+      }else{
+        if(msg.type==='fl4-roster'&&Array.isArray(msg.peers)){
+          remotes.clear();msg.peers.forEach(p=>{if(p&&p.peer&&p.peer!==peer.id)remotes.set(String(p.peer),{presence:Object.assign({},p.presence||{})})});
+          hostGone=false;emit();
+        }else if(msg.type==='fl4-full'){room.error='That lobby is full (maximum 8 players).';emit()}
+        else if(msg.type==='fl4-closed'){hostGone=true;remotes.clear();emit()}
+      }
+    }
+    if(isHost){
+      peer.on('connection',conn=>{
+        let accepted=false;
+        conn.on('data',msg=>receive(conn,msg));
+        const opened=()=>{
+          if(accepted||left)return;
+          if(remotes.size>=7){try{conn.send({type:'fl4-full'});setTimeout(()=>{try{conn.close()}catch(e){}},100)}catch(e){}return}
+          accepted=true;remotes.set(conn.peer,{conn,presence:{}});broadcast();
+        };
+        conn.on('open',opened);if(conn.open)opened();
+        conn.on('close',()=>{if(accepted)dropRemote(conn.peer)});
+        conn.on('error',()=>{if(accepted)dropRemote(conn.peer)});
+      });
+    }else{
+      if(hostConn){
+        hostConn.on('data',msg=>receive(hostConn,msg));
+        hostConn.on('close',()=>{hostGone=true;remotes.clear();emit()});
+        hostConn.on('error',()=>{hostGone=true;remotes.clear();emit()});
+        // Ask for a fresh roster after our data listener is attached, avoiding an
+        // initial-state race when the host's first roster arrives very quickly.
+        try{if(hostConn.open)hostConn.send({type:'fl4-sync'})}catch(e){}
+      }
+    }
+    return room;
+  }
+  async function host(key){
+    const id=peerIdFor(key),peer=new window.Peer(id,mpPeerOptions());
+    try{await mpWaitPeer(peer,10000);return makeRoom(peer,true,null,key)}
+    catch(e){try{peer.destroy()}catch(x){}throw e}
+  }
+  async function join(key){
+    const peer=new window.Peer(mpPeerOptions());
+    try{
+      await mpWaitPeer(peer,10000);
+      const conn=peer.connect(peerIdFor(key),{reliable:true,serialization:'json'});
+      await mpWaitConnection(conn,9000);
+      return makeRoom(peer,false,conn,key);
+    }catch(e){try{peer.destroy()}catch(x){}throw e}
+  }
+  return {
+    start,connected:()=>!!(probe&&probe.open&&!probe.destroyed),host,join,advertise,getPublicLobbies,onPeers,
+    peers:()=>[],
+    async dispose(){try{if(probe)probe.destroy()}catch(e){}try{if(dirPeer&&directoryOwner)dirPeer.destroy()}catch(e){}probe=null;dirPeer=null;directoryOwner=false;}
+  };
+}
 async function mpInit(){
-  if(rmTried)return rm;rmTried=true;
-  try{rm=(window.claude&&window.claude.use)?await window.claude.use('room'):null}catch(e){rm=null}
-  return rm;
+  if(rm&&rm.connected())return rm;
+  if(rmTried&&!rm)return null;
+  rmTried=true;
+  try{
+    if(!window.Peer)throw new Error('PeerJS failed to load.');
+    const service=createPeerRoomService();
+    if(await service.start()){rm=service;return rm;}
+    rmTried=false;return null;
+  }catch(e){rm=null;rmTried=false;return null;}
 }
 const mpSongs=()=>SONGS.filter(x=>!x.import&&!x.chart&&!x.custom);
 const mpDiffs=()=>DIFFS.filter(d=>!d.auto);
@@ -1183,9 +1421,11 @@ function mpSet(patch){if(!mp)return;try{const r=mp.r.presence(patch);if(r&&r.cat
 const mpHostPeer=()=>mp?mp.r.peers().find(p=>p.presence&&p.presence.host===1):null;
 function mpStatus(){
   const el=$('mpstatus');
-  if(!rm){el.textContent=rmTried?'Multiplayer is not available here. It needs a signed-in viewer with access to this page.':'Connecting...';$('mphostbtn').disabled=true;$('mpjoinbtn').disabled=true;return}
-  const n=rm.peers().length;
-  el.textContent=(rm.connected()?'Connected. ':'Connecting... ')+n+' '+(n===1?'person has':'people have')+' this page open.';
+  if(!rm||!rm.connected()){
+    el.textContent='Could not connect to the multiplayer service. Check your connection and try again.';
+    $('mphostbtn').disabled=true;$('mpjoinbtn').disabled=true;return;
+  }
+  el.textContent='Online multiplayer is ready. Host a lobby and share its 6-digit code, or join a friend with their code.';
   $('mphostbtn').disabled=false;$('mpjoinbtn').disabled=false;
 }
 async function openMp(){
@@ -1197,34 +1437,37 @@ async function openMp(){
 function mpAdvertise(){
   if(!rm||!mp||!mp.host)return;
   const pl=mp.pub?{c:mp.code,h:mst(prof.name,16),s:mp.song,d:mp.diff,n:mp.r.peers().length,m:8,t:mp.playing?'playing':'open'}:null;
-  const sig=JSON.stringify(pl);if(sig===mp.advSig)return;mp.advSig=sig;
-  try{const r=rm.presence({pl});if(r&&r.catch)r.catch(()=>{})}catch(e){}
+  const sig=JSON.stringify(pl),now=Date.now();
+  if(sig===mp.advSig&&now-(mp.advAt||0)<8000)return;
+  mp.advSig=sig;mp.advAt=now;
+  try{const r=rm.advertise(mp.code,pl);if(r&&r.catch)r.catch(()=>{})}catch(e){}
 }
 async function mpHostGo(){
   if(!await mpInit()){mpStatus();return}
   $('mpstatus').textContent='Creating lobby...';
   let r=null,code='';
-  for(let t=0;t<5&&!r;t++){
+  for(let t=0;t<8&&!r;t++){
     code=String(Math.floor(100000+Math.random()*900000));
-    let rr;try{rr=await rm.join('mp-'+code)}catch(e){continue}
-    await sleep(700);
-    if(rr.peers().some(p=>!p.isMe&&p.presence&&p.presence.host===1)){try{await rr.leave()}catch(e){}continue}
-    r=rr;
+    try{r=await rm.host('mp-'+code)}catch(e){
+      if(e&&e.type==='unavailable-id')continue;
+      $('mpstatus').textContent='Could not create a lobby. Check your connection and try again.';break;
+    }
   }
   if(!r){toast('Could not create a lobby. Try again.');mpStatus();return}
-  mp={r,code,host:true,pub:true,go:0,lastGo:0,seen:{},ci:0,sent:0,playing:false,finished:false,rewarded:false,song:mpSongs()[0].id,diff:'normal',hostGone:0,lastTick:0,advSig:'',timer:0};
+  mp={r,code,host:true,pub:true,go:0,lastGo:0,seen:{},ci:0,sent:0,playing:false,finished:false,rewarded:false,song:mpSongs()[0].id,diff:'normal',hostGone:0,lastTick:0,advSig:'',advAt:0,timer:0};
   mp.un=r.onPeers(mpPeers);
   mpSet(Object.assign(mpMe(),{host:1,song:mp.song,diff:mp.diff,pub:1,go:0,st:'lobby',rd:1,sc:0}));
   mpAdvertise();ach('mph');mpShowLobby();
 }
 async function mpJoinCode(code){
-  if(!await mpInit())return 'Multiplayer is not available here.';
+  if(!await mpInit())return 'Multiplayer could not connect. Check your internet connection and try again.';
   if(!/^\d{6}$/.test(code))return 'Enter the 6-digit code.';
-  let r;try{r=await rm.join('mp-'+code)}catch(e){return 'Could not reach that lobby.'}
+  let r;try{r=await rm.join('mp-'+code)}catch(e){return e&&e.message?mst(e.message,140):'Could not reach that lobby. Check the code and try again.'}
   let host=null;
-  for(let i=0;i<20&&!host;i++){await sleep(150);host=r.peers().find(p=>!p.isMe&&p.presence&&p.presence.host===1)}
+  for(let i=0;i<30&&!host&&!r.error;i++){await sleep(150);host=r.peers().find(p=>!p.isMe&&p.presence&&p.presence.host===1)}
   const bad=async m=>{try{await r.leave()}catch(e){}return m};
-  if(!host)return bad('No lobby found with that code.');
+  if(r.error)return bad(r.error);
+  if(!host)return bad('No lobby found with that code. Make sure the host is still in the lobby.');
   if(r.peers().length>8)return bad('That lobby is full.');
   if(host.presence.st==='play')return bad('That match has already started.');
   mp={r,code,host:false,pub:!!host.presence.pub,go:0,lastGo:mcl(host.presence.go,0,1e6),seen:{},ci:0,sent:0,playing:false,finished:false,rewarded:false,hostGone:0,lastTick:0,timer:0};
@@ -1269,7 +1512,7 @@ function mpRenderLobby(){
   $('mptitle').textContent=mp.host?'Hosting a lobby':'Lobby';
   $('mphostctl').hidden=!mp.host;
   $('mppubbtn').setAttribute('aria-pressed',mp.pub);$('mpprivbtn').setAttribute('aria-pressed',!mp.pub);
-  $('mpcoderow').hidden=!(mp.host&&!mp.pub);$('mpcodebox').value=mp.code;
+  $('mpcoderow').hidden=!mp.host;$('mpcodebox').value=mp.code;
   const sn=(SONGS.find(x=>x.id===hpr.song)||{name:'?'}).name,dn=(DIFFS.find(x=>x.id===hpr.diff)||{name:'?'}).name;
   $('mpinfo').textContent=sn+' | '+dn+(mp.host?'':(mp.pub?' | Public lobby':' | Private lobby'));
   const box=$('mpplayers');box.innerHTML='';
@@ -1284,7 +1527,7 @@ function mpRenderLobby(){
   $('mpstart').hidden=!mp.host;$('mpready').hidden=mp.host;
   $('mpready').textContent=me&&me.presence&&me.presence.rd?'Not ready':'Ready';
   $('mpstart').disabled=!others;
-  $('mpmsg').textContent=mp.host?(others?'Press Start match when everyone is ready.':'Waiting for players to join...'):'Waiting for the host to start the match.';
+  $('mpmsg').textContent=mp.host?(others?'Press Start match when everyone is ready.':'Waiting for players. Share the 6-digit code above with friends.'):'Waiting for the host to start the match.';
 }
 function mpShowLobby(){
   if(!mp)return;
@@ -1366,7 +1609,7 @@ function mpToLobby(){
 async function mpLeave(msg){
   if(!mp)return;const m=mp;mp=null;
   clearInterval(m.timer);clearTimeout(m.fto);try{if(m.un)m.un()}catch(e){}
-  if(m.host&&rm){try{const r=rm.presence({pl:null});if(r&&r.catch)r.catch(()=>{})}catch(e){}}
+  if(m.host&&rm){try{await rm.advertise(m.code,null)}catch(e){}}
   if(mpMods){settings.mods=mpMods;mpMods=null}bot=mpBot;
   ['again','back','rpbtn','rpcmp'].forEach(i=>{$(i).hidden=false});$('mpbackbtn').hidden=true;$('mpres').hidden=true;
   try{await m.r.leave()}catch(e){}
@@ -1380,15 +1623,18 @@ async function openMpJoin(){
   mpListUn=rm.onPeers(()=>{if(!$('mpjoin').classList.contains('hide'))mpRenderPub()});
   mpRenderPub();
 }
-function mpRenderPub(){
-  const h=$('mppub');h.innerHTML='';
-  const ls=rm.peers().filter(p=>!p.isMe&&p.presence&&p.presence.pl&&typeof p.presence.pl==='object');
-  if(!ls.length){const p=document.createElement('p');p.textContent='No public lobbies right now. Ask a friend to host one, or host your own.';h.appendChild(p);return}
+async function mpRenderPub(){
+  const h=$('mppub');
+  if(!rm){h.innerHTML='';const p=document.createElement('p');p.textContent='Multiplayer is not connected. Return and try again.';h.appendChild(p);return}
+  const ls=await rm.getPublicLobbies();
+  if($('mpjoin').classList.contains('hide'))return;
+  h.innerHTML='';
+  if(!ls.length){const p=document.createElement('p');p.textContent='No public lobbies right now. Ask a friend for their 6-digit lobby code, or host your own.';h.appendChild(p);return}
   ls.forEach(p=>{
     const l=p.presence.pl,row=document.createElement('div');row.className='rrow';
     const sn=(SONGS.find(x=>x.id===l.s)||{name:'Unknown song'}).name,dn=(DIFFS.find(x=>x.id===l.d)||{name:''}).name;
     const t=document.createElement('span');
-    t.textContent=mst(l.h,16)+' | '+sn+' | '+dn+' | '+mcl(l.n,0,99)+'/'+mcl(l.m,1,99)+(l.t==='playing'?' | in match':'');
+    t.textContent=mst(l.h,16)+' | '+sn+' | '+dn+' | '+mcl(l.n,1,99)+'/'+mcl(l.m,1,99)+(l.t==='playing'?' | in match':'');
     const b=document.createElement('button');b.className='alt chip';b.textContent='Join';b.disabled=l.t==='playing'||mcl(l.n,0,99)>=mcl(l.m,1,99);
     b.onclick=async()=>{b.disabled=true;$('mpjmsg').textContent='Joining...';const e=await mpJoinCode(mst(l.c,6));$('mpjmsg').textContent=e;if(e)b.disabled=false};
     row.append(t,b);h.appendChild(row);
