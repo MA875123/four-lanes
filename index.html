@@ -115,6 +115,12 @@ body{touch-action:manipulation}canvas{touch-action:none}
 .screen{touch-action:pan-y;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;justify-content:flex-start}
 .screen:not(#menu)>:first-child{margin-top:auto}.screen:not(#menu)>:last-child{margin-bottom:auto}
 input,textarea,select{-webkit-user-select:text;user-select:text;font-size:16px}
+.dd{text-align:left;width:100%;display:flex;flex-direction:column;gap:2px;border-radius:14px}.dd small{font-weight:400;opacity:.75}
+#end.mpmode{justify-content:flex-start;padding-top:14px;gap:10px}
+#end.mpmode>*{margin-top:0!important;margin-bottom:0!important}
+#end.mpmode #etitle{order:1}#end.mpmode #mpres{order:2;width:100%;max-height:46dvh;overflow:auto}
+#end.mpmode #grade{order:3;font-size:40px}#end.mpmode #stats{order:4}#end.mpmode #xpinfo{order:5;font-size:12px}
+#end.mpmode .main,#end.mpmode .alt{order:6}
 </style>
 </head>
 <body>
@@ -131,7 +137,7 @@ input,textarea,select{-webkit-user-select:text;user-select:text;font-size:16px}
   </div>
   <canvas id="c" width="400" height="600"></canvas>
   <button id="pbtn" class="hide">Pause</button>
-  <input type="file" id="file" accept="audio/*,video/mp4,video/webm,video/quicktime,.mp3,.wav,.m4a,.aac,.ogg,.oga,.opus,.flac,.weba,.mp4,.webm,.mov,.m4v" hidden>
+  <input type="file" id="file" accept="audio/*,video/*,.mp3,.wav,.m4a,.aac,.ogg,.oga,.opus,.flac,.weba,.wma,.aif,.aiff,.caf,.mp4,.webm,.mov,.m4v,.mkv,.ogv,.3gp,.3g2,.avi,.ts,.mts,.m2ts,.mpg,.mpeg,.wmv,.flv" hidden>
 
   <div class="screen" id="menu">
     <div class="mh"><h1>Four Lanes</h1><p id="plabel"></p></div>
@@ -175,9 +181,10 @@ input,textarea,select{-webkit-user-select:text;user-select:text;font-size:16px}
       <div class="srow"><span>Lobby type</span><span class="row" style="width:auto;gap:6px"><button class="alt chip" id="mppubbtn">Public</button><button class="alt chip" id="mpprivbtn">Private</button></span></div>
       <div class="srow" id="mpcoderow" hidden><span>Code</span><span class="row" style="width:auto;gap:6px"><input class="nm" id="mpcodebox" readonly aria-label="Lobby code" style="width:120px;text-align:center;letter-spacing:2px"><button class="alt chip" id="mpcopy">Copy</button><button class="alt chip" id="mpinv">Invite link</button></span></div>
       <div class="srow"><span>Song</span><select id="mpsong"></select></div>
-      <div class="srow"><span>Level</span><select id="mpdiff"></select></div>
+      
     </div>
     <p id="mpinfo" style="color:var(--ink);font-weight:800"></p>
+    <div class="set"><div class="srow"><span>Your level</span><select id="mpdiff"></select></div></div>
     <div class="set" id="mpplayers"></div>
     <div class="srow" style="width:100%"><input class="nm" id="mpchat" maxlength="80" placeholder="Message" aria-label="Chat message" style="flex:1"><button class="alt chip" id="mpsend">Send</button></div>
     <div id="mplog" style="width:100%;max-height:90px;overflow:auto;font-size:13px;text-align:left"></div>
@@ -224,6 +231,7 @@ input,textarea,select{-webkit-user-select:text;user-select:text;font-size:16px}
     <h2 style="font-size:16px">Top plays</h2><div class="set" id="ptop"></div>
     <p id="pstats" style="font-size:14px"></p>
     <textarea id="bkjson" class="nm" rows="3" placeholder="Your backup text appears here. Paste a backup here to restore it." style="font-size:12px"></textarea>
+    <div class="set" id="skillinfo"></div>
     <div class="row"><button class="main" id="bkfile" style="padding:10px 22px">Save backup file</button><button class="alt" id="bkrest">Restore from file</button></div>
     <div class="row"><button class="alt chip" id="bkmed" aria-pressed="true">Include songs and replays</button></div>
     <input type="file" id="bkin" accept=".fl4,.json,application/json,application/octet-stream" hidden>
@@ -306,7 +314,7 @@ input,textarea,select{-webkit-user-select:text;user-select:text;font-size:16px}
       
       <div class="srow"><span>Phone mode</span><button class="alt" id="mobbtn" aria-pressed="false">Off</button></div>
       <div class="srow"><span>Botplay</span><button class="alt" id="botbtn" aria-pressed="false">Off</button></div>
-      <div class="srow"><span>Scores and skill data</span><button class="alt" id="rdata">Reset play data</button></div>
+      <div class="srow"><span>Saved data</span><button class="alt" id="rdata">Delete data...</button></div>
     </div>
     <button class="main" id="setback">Back</button>
   </div>
@@ -332,6 +340,7 @@ input,textarea,select{-webkit-user-select:text;user-select:text;font-size:16px}
     <button class="alt" id="rpcmp">Compare with top score</button>
     <button class="alt" id="back">Song select</button>
   </div>
+<div class="screen hide" id="deldata"><h2>Delete data</h2><p id="ddinfo" style="font-size:13px"></p><div class="set" id="ddlist"></div><div class="row"><button class="alt chip" id="ddall">Select all</button><button class="alt chip" id="ddnone">Clear</button><button class="alt chip" id="ddmem">Free memory now</button></div><button class="main" id="dddo">Delete selected</button><button class="alt" id="ddback">Back</button></div>
 <div class="screen hide" id="fpop"><h2>Filter songs</h2><div class="set" id="fbody"></div><div class="row"><button class="alt" id="freset">Clear filter</button><button class="main" id="fdone">Close</button></div></div>
 <div class="screen hide" id="plpop"><h2 id="plpt"></h2><div id="plpl"></div><button class="alt" id="plpc">Close</button></div>
 </div>
@@ -399,6 +408,52 @@ const FLT=[['all','All'],['fav','Favourites'],['slow','Slow'],['mid','Medium'],[
 function fLabel(){const f=FLT.find(x=>x[0]===lf)||FLT[0];$('fbtn').textContent='Filter: '+f[1]}
 function fRender(){const h=$('fbody');h.innerHTML='';FLT.forEach(([k,l])=>{const b=document.createElement('button');b.className='alt';b.textContent=l;b.setAttribute('aria-pressed',lf===k);b.onclick=()=>{lf=k;renderMenu();$('fpop').classList.add('hide')};h.appendChild(b)})}
 /* audio unlock: browsers keep audio suspended until a tap, which made music and countdowns stall */
+function vidRelease(){try{const v=$('vid');v.pause();v.removeAttribute('src');v.load()}catch(e){}}
+function freeMem(all){
+  const keep=all?null:SONGS[selS];
+  SONGS.forEach(x=>{if(x.lib&&x!==keep&&!x.loading&&(x.buf||x.an)){x.buf=null;x.an=null}});
+  if(all){vidRelease();try{pvStop()}catch(e){}}
+  renderMenu();
+}
+const lsK=re=>Object.keys(localStorage).filter(k=>re.test(k));
+const SCRE=/^fl:(rank|rt|hist|auto):|^fl:(skill|lanes)$|^fl:(?!rank:|rt:|hist:|auto:)[^:]+:[^:]+$/;
+let ddSel=new Set(),ddArm=0,ddCnt={};
+function ddRender(){
+  const h=$('ddlist');h.innerHTML='';
+  [['scores','Scores and rankings'],['prof','Profile, XP and achievements'],['fav','Favourites'],['pl','Playlists'],['charts','Custom charts'],['replays','Replays'],['songs','Imported songs and videos'],['set','Settings and tutorial']].forEach(([k,t])=>{
+    const b=document.createElement('button');b.className='alt dd';b.setAttribute('aria-pressed',ddSel.has(k));
+    const a=document.createElement('b');a.textContent=t;const sm=document.createElement('small');sm.textContent=ddCnt[k]||'';b.append(a,sm);
+    b.onclick=()=>{if(ddSel.has(k))ddSel.delete(k);else ddSel.add(k);ddArm=0;$('dddo').textContent='Delete selected';ddRender()};h.appendChild(b);
+  });
+}
+async function ddOpen(){
+  ddSel=new Set();ddArm=0;$('dddo').textContent='Delete selected';
+  const libs=SONGS.filter(x=>x.lib),mb=n=>(n/1048576).toFixed(1)+' MB';
+  ddCnt={scores:lsK(SCRE).length+' saved scores and ratings',prof:'Name, XP, level and achievements',fav:favs.size+' favourites',pl:pls.length+' playlists',charts:charts.length+' charts',replays:'',songs:libs.length+' songs ('+mb(libs.reduce((a,x)=>a+(x.blob?x.blob.size:0)+(x.audBlob?x.audBlob.size:0),0))+')',set:'Volume, keys, theme and the tutorial'};
+  ddRender();show('deldata');
+  try{ddCnt.replays=((await dbAll('replays'))||[]).length+' replays';ddRender()}catch(e){}
+  try{const e=await navigator.storage.estimate();$('ddinfo').textContent='This device is using '+mb(e.usage)+' of '+mb(e.quota)+' available for the game.'}catch(x){$('ddinfo').textContent=''}
+}
+async function ddRun(){
+  const S=ddSel,dead=new Set(SONGS.filter(x=>x.lib).map(x=>x.id));
+  charts.filter(c=>dead.has(c.base)).forEach(c=>dead.add('chart-'+c.id));
+  try{
+    if(S.has('scores'))lsK(SCRE).forEach(k=>localStorage.removeItem(k));
+    if(S.has('prof'))localStorage.removeItem('fl:prof');
+    if(S.has('fav'))localStorage.removeItem('fl:fav');
+    if(S.has('pl'))localStorage.removeItem('fl:pl');
+    if(S.has('charts'))localStorage.removeItem('fl:charts');
+    if(S.has('set'))['fl:settings','fl:mobile','fl:seen'].forEach(k=>localStorage.removeItem(k));
+    if(S.has('replays'))await dbx('replays','readwrite',st=>st.clear());
+    if(S.has('songs')){
+      await dbx('songs','readwrite',st=>st.clear());
+      if(!S.has('replays'))for(const r of ((await dbAll('replays'))||[]))if(dead.has(r.songId))await dbDel('replays',r.key);
+      if(!S.has('charts')){charts=charts.filter(c=>!dead.has(c.base));saveCharts()}
+      lsK(/^fl:/).filter(k=>[...dead].some(id=>k.indexOf(':'+id+':')>=0||k.indexOf('fl:'+id+':')===0)).forEach(k=>localStorage.removeItem(k));
+    }
+  }catch(e){}
+  toast('Deleted. Reloading...');setTimeout(()=>location.reload(),900);
+}
 let acRt=0;
 function acUnlock(){
   try{
@@ -422,9 +477,10 @@ async function bkSave(){
     const media=$('bkmed').getAttribute('aria-pressed')==='true',h={v:2,t:Date.now(),ls,replays:[],songs:[]},bl=[];let off=0;
     if(media){
       try{h.replays=(await dbAll('replays'))||[]}catch(e){}
-      try{for(const r of ((await dbAll('songs'))||[])){const o=Object.assign({},r,{blob:null,art:null,an:null});
+      try{for(const r of ((await dbAll('songs'))||[])){const o=Object.assign({},r,{blob:null,art:null,aud:null,an:null});
         if(r.blob){o.bo=off;o.bl=r.blob.size;o.bt=r.blob.type;bl.push(r.blob);off+=r.blob.size}
         if(r.art){o.ao=off;o.al=r.art.size;o.at=r.art.type;bl.push(r.art);off+=r.art.size}
+        if(r.aud){o.uo=off;o.ul=r.aud.size;o.ut=r.aud.type;bl.push(r.aud);off+=r.aud.size}
         h.songs.push(o)}}catch(e){}
     }
     const hb=new TextEncoder().encode(JSON.stringify(h)),pre=new Uint8Array(8);pre.set([70,76,52,66]);new DataView(pre.buffer).setUint32(4,hb.length);
@@ -447,8 +503,8 @@ async function bkRestore(f){
     for(const r of (h.replays||[])){if(r&&r.key){try{await dbPut('replays',r);rp++}catch(e){}}}
     for(const o of (h.songs||[])){try{
       if(!o||!o.id||(await dbGet('songs',o.id))||!(o.bl>=0))continue;
-      const r=Object.assign({},o,{an:null,blob:f.slice(base+o.bo,base+o.bo+o.bl,o.bt||''),art:o.al>0?f.slice(base+o.ao,base+o.ao+o.al,o.at||''):null});
-      ['bo','bl','bt','ao','al','at'].forEach(k=>delete r[k]);await dbPut('songs',r);sg++}catch(e){}}
+      const r=Object.assign({},o,{an:null,blob:f.slice(base+o.bo,base+o.bo+o.bl,o.bt||''),art:o.al>0?f.slice(base+o.ao,base+o.ao+o.al,o.at||''):null,aud:o.ul>0?f.slice(base+o.uo,base+o.uo+o.ul,o.ut||''):null});
+      ['bo','bl','bt','ao','al','at','uo','ul','ut'].forEach(k=>delete r[k]);await dbPut('songs',r);sg++}catch(e){}}
     msg('Restored '+n+' saved items, '+sg+' new songs and '+rp+' replays. Reloading...');setTimeout(()=>location.reload(),1500);
   }catch(e){msg('That is not a valid backup file.')}
 }
@@ -690,11 +746,11 @@ function renderMenu(){
   if(!$('songs').children.length)$('songs').innerHTML='<p style="padding:8px">No songs match. Try a different search or filter.</p>';
   profileLabel();$('songs').scrollTop=st0;const cs=SONGS[selS],ni=$('sname'),rb=$('rec'),rc=recommend(cs);
   ni.hidden=!cs.lib;$('artrow').hidden=!(cs.lib&&!cs.isVideo);$('librow').hidden=!cs.lib;if(!ni.hidden&&document.activeElement!==ni)ni.value=cs.name;
-  if(rc){$('diffs').children[rc.i].textContent=DIFFS[rc.i].name+' ★';rb.disabled=false;rb.textContent='Recommended for you: '+DIFFS[rc.i].name+' (about '+rc.n.toFixed(1)+' notes per second)';rb.onclick=()=>{selD=rc.i;renderMenu()}}
+  if(rc){$('diffs').children[rc.i].textContent=DIFFS[rc.i].name+' ★';rb.disabled=false;rb.textContent='Recommended for you: '+DIFFS[rc.i].name+' (about '+rc.n.toFixed(1)+' notes per second, peaks near '+rc.pk.toFixed(1)+')';rb.onclick=()=>{selD=rc.i;renderMenu()}}
   else{rb.disabled=true;rb.onclick=null;rb.textContent=cs.custom&&!cs.an?'Load a song to see a recommendation':'Play a song to get a level recommendation'}
   document.documentElement.style.setProperty('--acc',SONGS[selS].acc);
 }
-function show(id){$('plpop').classList.add('hide');$('fpop').classList.add('hide');if(id!=='end')$('nextbtn').hidden=true;['menu','pause','end','settings','tut','calib','mods','prof','ach','editor','replays','mp','mpjoin','mplobby'].forEach(x=>$(x).classList.toggle('hide',x!==id));if(id!=='menu')pvStop();$('pbtn').classList.toggle('hide',id!==null);$('rpbar').hidden=!(id===null&&replaying)}
+function show(id){$('plpop').classList.add('hide');$('fpop').classList.add('hide');if(id!=='end')$('nextbtn').hidden=true;['menu','pause','end','settings','tut','calib','mods','prof','ach','editor','replays','mp','mpjoin','mplobby','deldata'].forEach(x=>$(x).classList.toggle('hide',x!==id));if(id!=='menu')pvStop();$('pbtn').classList.toggle('hide',id!==null);$('rpbar').hidden=!(id===null&&replaying)}
 
 /* ---------- chart ---------- */
 function seeded(s){return()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296}}
@@ -736,23 +792,24 @@ async function analyze(buf,prog){
   const nf=Math.max(8,Math.floor((x.length-N)/hop)),fr=sr/hop,bw=sr/N;
   const win=new Float32Array(N);for(let i=0;i<N;i++)win[i]=.5-.5*Math.cos(2*Math.PI*i/N);
   const nyq=N/2-1,bi=f=>Math.min(nyq,Math.max(1,Math.round(f/bw))),B=[[bi(40),bi(160)],[bi(300),bi(3400)],[bi(5000),bi(12000)]],top=B[2][1];
-  const fl=[0,1,2].map(()=>new Float32Array(nf)),cen=new Float32Array(nf);
+  const fl=[0,1,2].map(()=>new Float32Array(nf)),cen=new Float32Array(nf),EN=new Float32Array(nf),VR=new Float32Array(nf),VP=new Float32Array(nf);
   const prev=new Float32Array(top+1),re=new Float32Array(N),im=new Float32Array(N);
   for(let f=0;f<nf;f++){
     const o=f*hop;
     for(let i=0;i<N;i++){re[i]=(y?(x[o+i]+y[o+i])*.5:x[o+i])*win[i];im[i]=0}
     fft(re,im);
-    let cs=0,cw=0;
+    let cs=0,cw=0,mx=0;const es=[0,0,0];
     for(let b=0;b<3;b++){
       let s=0;
       for(let k=B[b][0];k<=B[b][1];k++){
         const m=Math.hypot(re[k],im[k]),l=Math.log1p(1000*m/N);
         s+=Math.max(0,l-prev[k]);prev[k]=l;
-        if(b===1){cs+=k*m;cw+=m}
+        es[b]+=m;if(b===1){cs+=k*m;cw+=m;if(m>mx)mx=m}
       }
       fl[b][f]=s/(B[b][1]-B[b][0]+1);
     }
     cen[f]=cw>0?Math.log2(cs/cw*bw+1):0;
+    {const et=es[0]+es[1]+es[2]+1e-9;EN[f]=Math.log1p(1000*et/N);VR[f]=es[1]/et;VP[f]=cw>0?mx/(cw/(B[1][1]-B[1][0]+1)):0}
     if(f%500===499){prog(f/nf);await new Promise(r=>setTimeout(r))}
   }
   const nb=fl.map(a=>{let m=0;for(const v of a)m+=v;m=m/nf+1e-9;return a.map(v=>v/m)});
@@ -796,7 +853,24 @@ async function analyze(buf,prog){
   const sums=[0,0,0,0],cn=[0,0,0,0];
   bf.forEach((t,k)=>{sums[k%4]+=nb[0][t]+nb[1][t]*.3;cn[k%4]++});
   let dph=0,db=-1;for(let m=0;m<4;m++){const v=sums[m]/Math.max(1,cn[m]);if(v>db){db=v;dph=m}}
-  return {sr,N,hop,nf,fr,o,nb,cen,bpm:bpmF,off:(bp*hop+N*.4)/sr,conf:stable?conf:conf*.8,beatT,dph,stable};
+  const durS=nf*hop/sr,cl01=v=>v<0?0:v>1?1:v;
+  const smo=(a,w)=>{const n=a.length,pre=new Float64Array(n+1);for(let i=0;i<n;i++)pre[i+1]=pre[i]+a[i];const r=new Float32Array(n);for(let i=0;i<n;i++){const lo=Math.max(0,i-w),hi=Math.min(n,i+w+1);r[i]=(pre[hi]-pre[lo])/(hi-lo)}return r};
+  const pct=(a,q)=>{const t=Float32Array.from(a).sort();return t[Math.min(t.length-1,Math.floor(t.length*q))]};
+  /* energy 0..1: quiet intros and outros get fewer notes, choruses and drops get more */
+  const e0=smo(EN,Math.round(fr*.5)),e5=pct(e0,.05),e95=pct(e0,.95),en=e0.map(v=>cl01((v-e5)/(e95-e5+1e-6)));
+  /* vocals and lead: tonal, harmonic peaks in the voice band, relative to the rest of the song */
+  const vps=smo(VP,Math.round(fr*.2)),vrs=smo(VR,Math.round(fr*.2)),p50=pct(vps,.5),p90=pct(vps,.9),vg=p90<5?.3:1;
+  const voc=smo(vps.map((v,i)=>cl01((v-p50)/(p90-p50+1e-6))*cl01((vrs[i]-.18)/.22)*vg),Math.round(fr*.3));
+  let vc=0;for(let i=0;i<nf;i++)if(voc[i]>.5)vc++;
+  /* rhythm feel: are off-beats on the triplet grid (swing, shuffle, 6/8) or the sixteenth grid? */
+  let S3=0,S4=0;for(let k=0;k+1<bf.length;k++){const a0=bf[k],d=bf[k+1]-a0;S3+=gr(o,a0+d/3)+gr(o,a0+d*2/3);S4+=gr(o,a0+d/4)+gr(o,a0+d*3/4)}
+  const tri=stable&&bf.length>16&&S3>S4*1.3;
+  /* tempo octave check: far too many or too few onsets per beat means half or double time */
+  let bpmO=bpmF,oct=0,bt2=beatT,dph2=dph;
+  {const dens=pickPeaks({o,nb,nf,fr,hop,N,sr},1.3,.12,false).length/Math.max(1,durS*bpmF/60);
+   if(bpmF<=82&&dens>2.6){oct=1;bpmO=bpmF*2;bt2=[];beatT.forEach((t,i)=>{bt2.push(t);if(i+1<beatT.length)bt2.push((t+beatT[i+1])/2)});dph2=(dph*2)%4}
+   else if(bpmF>=145&&dens<.8){oct=-1;bpmO=bpmF/2;bt2=beatT.filter((t,i)=>i%2===0);dph2=(dph>>1)%4}}
+  return {sr,N,hop,nf,fr,o,nb,cen,en,voc,vf:vc/nf,tri,grid:tri?3:4,oct,ver:2,bpm:bpmO,off:(bp*hop+N*.4)/sr,conf:stable?conf:conf*.8,beatT:bt2,dph:dph2,stable};
 }
 const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function cleanName(b){return b.replace(/_+/g,' ').replace(/^\s*\d{1,3}\s*[-._)]\s*/,'').replace(/\s+/g,' ').trim()||b}
@@ -848,40 +922,52 @@ function assignLanes(a,pk,rng){
 }
 function mult(a){return a>=.92?1.2:a>=.85?1.08:a>=.72?.97:a>=.55?.82:.65}
 function histGet(id){try{return JSON.parse(localStorage.getItem('fl:hist:'+id))||[]}catch(e){return[]}}
-function histAdd(id,e){try{const h=histGet(id);h.push(e);localStorage.setItem('fl:hist:'+id,JSON.stringify(h.slice(-8)))}catch(x){}}
+function histAdd(id,e){try{const h=histGet(id);h.push(e);localStorage.setItem('fl:hist:'+id,JSON.stringify(h.slice(-12)))}catch(x){}}
 function autoGet(id){try{const v=JSON.parse(localStorage.getItem('fl:auto:'+id));return v&&v.v>0?v.v:null}catch(e){return null}}
 function autoSet(id,v){try{localStorage.setItem('fl:auto:'+id,JSON.stringify({v}))}catch(e){}}
 function laneGet(){try{const v=JSON.parse(localStorage.getItem('fl:lanes'));if(v&&v.h&&v.m)return v.h.map((h,i)=>(v.m[i]+1)/(h+v.m[i]+2))}catch(e){}return [.25,.25,.25,.25]}
 function laneSave(){try{const v=JSON.parse(localStorage.getItem('fl:lanes'))||{h:[0,0,0,0],m:[0,0,0,0]};localStorage.setItem('fl:lanes',JSON.stringify({h:v.h.map((x,i)=>x*.85+laneRun.h[i]),m:v.m.map((x,i)=>x*.85+laneRun.m[i])}))}catch(e){}}
+/* keeps the most important notes in every 4 second window, so quiet parts stay light and loud parts get the density */
+function selectByBudget(target,pkCap){
+  const t0=notes[0].t,sec=Math.max(5,endT-t0),W=4,nw=Math.ceil(sec/W)+1,bk=Array.from({length:nw},()=>[]),en=new Float64Array(nw);
+  notes.forEach(n=>{const w=Math.min(nw-1,Math.floor((n.t-t0)/W));bk[w].push(n);en[w]+=(n.e==null?.5:n.e)});
+  const wt=bk.map((b,i)=>b.length?.7+.6*(en[i]/b.length):0),ws=wt.reduce((x,y)=>x+y,0)||1,tot=target*sec,cap=Math.max(2,Math.ceil(W*pkCap)),got=new Int32Array(nw),out=new Set();
+  bk.forEach((b,i)=>{if(!b.length)return;const q=Math.max(1,Math.min(cap,Math.round(wt[i]/ws*tot)));b.slice().sort((x,y)=>x.r-y.r).slice(0,q).forEach(n=>{out.add(n);got[i]++})});
+  let rem=Math.round(tot)-out.size;
+  if(rem>0)notes.filter(n=>!out.has(n)).sort((x,y)=>x.r-y.r).forEach(n=>{const w=Math.min(nw-1,Math.floor((n.t-t0)/W));if(rem>0&&got[w]<cap){out.add(n);got[w]++;rem--}});
+  return notes.filter(n=>out.has(n));
+}
 function personalize(){
   autoTarget=0;
-  let lv=startLevel();
-  const ln=laneGet(),av=(ln[0]+ln[1]+ln[2]+ln[3])/4;
-  notes.forEach(n=>{n.r=Math.max(0,n.r+Math.min(.25,Math.max(-.1,(ln[n.l]-av)*1.2)))});
-  if(autoTarget){
-    const sec=Math.max(5,endT-notes[0].t),rs=notes.map(n=>n.r).sort((a,b)=>a-b);
-    lv=Math.min(1,Math.max(.12,rs[Math.min(rs.length-1,Math.max(0,Math.round(autoTarget*sec)-1))]));
-  }
-  let kept=notes.filter(n=>n.r<=lv);
+  const sk=skillGet()||{},ln=laneGet(),av=(ln[0]+ln[1]+ln[2]+ln[3])/4,cl=sk.cl||[],obk=sk.ob==null?.75:sk.ob;
+  notes.forEach(n=>{
+    n.r=Math.max(0,n.r+Math.min(.25,Math.max(-.1,(ln[n.l]-av)*1.2)));
+    if(n.c!=null&&cl[n.c]!=null&&cl[n.c]<.75)n.r+=Math.min(.2,(.75-cl[n.c])*.5);
+    if(n.ob&&obk<.8)n.r+=Math.min(.2,(.8-obk)*.6);
+  });
+  let lv=startLevel(),kept;
+  if(autoTarget)kept=selectByBudget(autoTarget,sk.pk?Math.max(sk.pk*1.15,autoTarget*1.3):autoTarget*1.8);
+  else kept=notes.filter(n=>n.r<=lv);
   if(kept.length<10)kept=notes.slice().sort((a,b)=>a.r-b.r).slice(0,Math.min(10,notes.length)).sort((a,b)=>a.t-b.t);
   lv=Math.max(lv,kept.reduce((m,n)=>Math.max(m,n.r),0));
   notes=kept;total=notes.length;endT=notes[notes.length-1].t;
-  const tg=autoTarget||2,mx=Math.max(...ln);
-  diff=Object.assign({},diff,{fall:Math.min(1.8,Math.max(1.25,1.95-.14*tg)),win:Math.min(1.2,Math.max(.85,1.25-.07*tg))});
+  const tg=autoTarget||2,mx=Math.max(...ln),pr=sk.pr==null?.5:sk.pr;
+  diff=Object.assign({},diff,{fall:Math.min(1.8,Math.max(1.25,1.95-.14*tg)),win:Math.min(1.2,Math.max(.85,1.25-.07*tg-(pr-.5)*.12))});
   autoNote+=(autoNote?'. ':'')+'Fall speed and timing tuned to you'+(mx-av>.08?'; fewer notes in your weakest lane ('+['D','F','J','K'][ln.indexOf(mx)]+')':'');
   return lv;
 }
 function startLevel(){
-  const sec=Math.max(5,endT-notes[0].t),rs=notes.map(n=>n.r).sort((a,b)=>a-b);
+  const sec=Math.max(5,endT-notes[0].t),rs=notes.map(n=>n.r).sort((a,b)=>a-b),sk=skillGet();
   let target=null,parts=[];
   const rc=recommend(cur);
   if(rc){
-    target=rc.n;parts.push('Built around '+DIFFS[rc.i].name);
-    const h=histGet(cur.id).filter(x=>x.d===DIFFS[rc.i].id);
-    if(h.length){const av=h.reduce((s,x)=>s+x.acc,0)/h.length;target*=Math.min(1.2,Math.max(.85,mult(av)));parts.push('tuned by your past runs on it')}
+    target=rc.n;parts.push('Built around '+DIFFS[rc.i].name+', your recommended level');
+    const h=histGet(cur.id).filter(x=>x.d===DIFFS[rc.i].id).slice(-3);
+    if(h.length){const av=h.reduce((x,y)=>x+y.acc,0)/h.length;target*=Math.min(1.2,Math.max(.85,mult(av)));parts.push('adjusted by your recent runs on it')}
+    else if(sk&&sk.v){target=Math.min(target*1.1,Math.max(target*.9,sk.v));parts.push('nudged toward your overall skill')}
   }
   const au=autoGet(cur.id);
-  if(au){target=target?(target+au)/2:au;parts.push(rc?'and your last Auto run on this song':'Built from your last Auto run on this song')}
+  if(au){target=target?target*.55+au*.45:au;parts.push(rc?'and your last Auto run on this song':'Built from your last Auto run on this song')}
   if(target==null){autoNote='No play data yet, so this is a general chart';return .6}
   autoNote=parts.join(', ');autoTarget=target;
   const idx=Math.min(rs.length-1,Math.max(0,Math.round(target*sec)-1));
@@ -889,18 +975,56 @@ function startLevel(){
 }
 function skillGet(){try{return JSON.parse(localStorage.getItem('fl:skill'))}catch(e){return null}}
 function skillSet(v){try{localStorage.setItem('fl:skill',JSON.stringify(v))}catch(e){}}
-function npsFor(song,di){
-  const sv={cur,diff,selD,notes,total,endT,beat};let r=0;
-  try{cur=song;diff=DIFFS[di];selD=di;beat=60/song.bpm;buildChart();r=notes.length/Math.max(5,endT-notes[0].t)}catch(e){}
+function chartStats(song,di){
+  const an=song.an,sig=an?an.nf+':'+(an.bpm||0).toFixed(2)+':'+(an.ver||0):'b';
+  if(song.cs2&&song.cs2.sig===sig&&song.cs2.r[di])return song.cs2.r[di];
+  const sv={cur,diff,selD,notes,total,endT,beat};let r={nps:0,pk:0,ob:0};
+  try{
+    cur=song;diff=DIFFS[di];selD=di;beat=60/song.bpm;buildChart();
+    const n=notes,sec=Math.max(5,endT-n[0].t);let j=0,pk=0,ob=0;
+    for(let i=0;i<n.length;i++){while(n[i].t-n[j].t>4)j++;pk=Math.max(pk,(i-j+1)/4);if(n[i].ob)ob++}
+    r={nps:n.length/sec,pk,ob:ob/Math.max(1,n.length)};
+  }catch(e){}
   ({cur,diff,selD,notes,total,endT,beat}=sv);
-  return r;
+  if(!song.cs2||song.cs2.sig!==sig)song.cs2={sig,r:{}};
+  song.cs2.r[di]=r;return r;
 }
+function npsFor(song,di){return chartStats(song,di).nps}
+/* picks the hardest level whose average density, bursts and off-beat load fit what the game has learned about you */
 function recommend(song){
   const sk=skillGet();
   if(!sk||!sk.v||(song.custom&&!song.an))return null;
-  let pick=0,pn=0,first=true;
-  DIFFS.forEach((d,i)=>{if(d.auto)return;const n=npsFor(song,i);if(first){pn=n;first=false}if(n<=sk.v*1.08){pick=i;pn=n}});
-  return {i:pick,n:pn};
+  const pkS=sk.pk||sk.v*1.7,obS=sk.ob==null?.75:sk.ob;let out=null;
+  DIFFS.forEach((d,i)=>{if(d.auto)return;const c=chartStats(song,i),load=(.65*c.nps/sk.v+.35*c.pk/pkS)*(1+.5*c.ob*Math.max(0,.8-obS));if(!out||load<=1.08)out={i,n:c.nps,pk:c.pk,load}});
+  return out;
+}
+/* data collection after every run: speed, burst skill, timing, off-beat accuracy and accuracy per sound type */
+function learn(acc,judged,nps){
+  const est=nps*mult(acc),sk=skillGet()||{},ema=(o,v,w)=>o==null?v:o*(1-w)+v*w;
+  const cn=[0,0,0,0,0,0],ch=[0,0,0,0,0,0];let on=0,oh=0;
+  const ns=notes.filter(n=>!n.skip);
+  ns.forEach(n=>{if(n.c==null)return;cn[n.c]++;if(n.done)ch[n.c]++;if(n.ob){on++;if(n.done)oh++}});
+  const cl=(sk.cl||[]).slice();while(cl.length<4)cl.push(null);
+  for(let c=0;c<4;c++)if(cn[c]>=8)cl[c]=ema(cl[c],ch[c]/cn[c],.35);
+  let pkd=0,j=0,hs=0;
+  for(let i=0;i<ns.length;i++){if(ns[i].done)hs++;while(ns[i].t-ns[j].t>4){if(ns[j].done)hs--;j++}const c=i-j+1;if(c>=6&&hs/c>=.8)pkd=Math.max(pkd,c/4)}
+  const hj=counts.perfect+counts.good+counts.ok,pr=hj?counts.perfect/hj:null;
+  skillSet({v:ema(sk.v,est,.45),pk:pkd?ema(sk.pk,pkd*Math.max(1,mult(acc)),.4):sk.pk,pr:pr==null?sk.pr:ema(sk.pr,pr,.3),ob:on>=8?ema(sk.ob,oh/on,.35):sk.ob,cl,n:(sk.n||0)+1,ts:Date.now()});
+  if(diff.auto)autoSet(cur.id,est);else histAdd(cur.id,{d:diff.id,nps,acc,pk:pkd,pr,ts:Date.now()});
+  if(!settings.mods.mirror&&!settings.mods.shuffle)laneSave();
+}
+function skillText(){
+  const sk=skillGet(),h=$('skillinfo');h.innerHTML='';const rows=[];
+  if(!sk||!sk.v)rows.push(['Play a few songs and the game will learn your skill.','']);
+  else{
+    rows.push(['Speed',sk.v.toFixed(1)+' notes per second']);
+    if(sk.pk)rows.push(['Burst skill',sk.pk.toFixed(1)+' notes per second']);
+    if(sk.pr!=null)rows.push(['Timing precision',Math.round(sk.pr*100)+'% perfect hits']);
+    if(sk.ob!=null)rows.push(['Off-beat notes',Math.round(sk.ob*100)+'% hit']);
+    ['Kick and bass','Snare and claps','Hi-hats and highs','Vocals and lead'].forEach((nm,i)=>{const v=(sk.cl||[])[i];if(v!=null)rows.push([nm,Math.round(v*100)+'% hit'])});
+    rows.push(['Runs learned from',String(sk.n||1)]);
+  }
+  rows.forEach(([a,b])=>{const d=document.createElement('div');d.className='rrow';const x=document.createElement('span'),y=document.createElement('span');x.textContent=a;y.textContent=b;d.append(x,y);h.appendChild(d)});
 }
 function beatPos(a,t){
   const b=a.beatT,n=b.length,P=60/a.bpm;
@@ -941,51 +1065,62 @@ function beatTime(a,q){
   if(q>=n-1)return b[n-1]+(q-(n-1))*P;
   const i=Math.floor(q);return b[i]+(q-i)*(b[i+1]-b[i]);
 }
+function autoBase(){
+  const rc=cur.an?recommend(cur):null,ix=DIFFS.findIndex(d=>d.id==='insane'),hd=DIFFS.findIndex(d=>d.id==='hard');
+  return DIFFS[rc?Math.min(ix,rc.i+1):hd];
+}
 function buildCustom(){
-  const a=cur.an,k=diff.k,rng=seeded(5+selD),T=60/a.bpm;
-  const gap=Math.min(diff.gap*1.5,Math.max(diff.gap*.7,diff.gap*2*T));
-  const pk0=pickPeaks(a,k,gap,true);
-  const loc=getLoc(a),dur=a.nf*a.hop/a.sr,snapOk=a.stable&&a.conf>1.5;
-  const cand=[];
+  const a=cur.an,D=diff.auto?autoBase():diff,k=D.k,rng=seeded(5+selD),T=60/a.bpm,g=a.grid||4;
+  const gap=Math.min(D.gap*1.5,Math.max(D.gap*.7,D.gap*2*T));
+  const pk0=pickPeaks(a,k,gap,true),loc=getLoc(a),dur=a.nf*a.hop/a.sr,snapOk=a.stable&&a.conf>1.5,cand=[];
   for(const p of pk0){
     let pt=p.t;const bp=beatPos(a,pt);
     let pos=(bp-a.dph)*2,kk=Math.round(pos),on=Math.abs(pos-kk)*T/2<.05;
-    const qb=Math.round(bp*4)/4;
+    const qb=Math.round(bp*g)/g;
     if(snapOk&&Math.abs(qb-bp)*T<.03){pt=beatTime(a,qb);pos=(qb-a.dph)*2;kk=Math.round(pos);on=Math.abs(pos-kk)*T/2<.05}
     const bi=Math.round(pos/2);
-    if(diff.grid&&a.conf>1.35&&!(on&&kk%2===0&&(a.bpm<135||bi%2===0)))continue;
+    if(D.grid&&a.conf>1.35&&!(on&&kk%2===0&&(a.bpm<135||bi%2===0)))continue;
+    /* what is playing: 0 kick/bass, 1 snare/clap, 2 hi-hat/high, 3 vocal or lead */
+    const i=p.i,lo=.9*a.nb[0][i],mi=a.nb[1][i],hi=.5*a.nb[2][i],vc=a.voc?a.voc[i]:0;
+    p.c=lo>=mi&&lo>=hi?0:(vc>.5&&mi>=hi)?3:hi>mi*.8?2:1;p.v=vc;p.e=a.en?a.en[i]:.5;
     cand.push({p,pt,kk,on});
   }
   assignLanes(a,cand.map(c=>c.p),rng);
+  cand.forEach(({p})=>{
+    if(p.c===0)p.lane=Math.min(p.lane,1);
+    else if(p.c===2)p.lane=Math.max(p.lane,2);
+    else if(p.c===3&&p.v>.6)p.lane=p.lane===0?1:p.lane===3?2:p.lane;
+    else if(p.c===1&&(p.lane===0||p.lane===3)&&rng()<.5)p.lane=p.lane===0?1:2;
+  });
   notes=[];let last=-1,run=0,lastT=-9;
   for(const {p,pt,kk,on} of cand){
     let l=p.lane;
     if(last>=0&&pt-lastT<.22&&Math.abs(l-last)>2)l=last+(l>last?2:-2);
     if(l===last){run++;if(run>=2){l=(l+1+Math.floor(rng()*3))%4;run=0}}else run=0;
     last=l;lastT=pt;
-    const gb=kk%8===0?0:kk%4===0?.2:kk%2===0?.4:.6;
-    const r=Math.min(.95,gb*.55+(on?0:.15)+(1-Math.min(1,p.s/3))*.35+(1-Math.min(1,loc[p.i]/1.6))*.1),t=pt+LEAD;
-    notes.push({t,l,done:false,r});
-    if(diff.dbl>0&&p.s>2.2&&rng()<diff.dbl*.5)notes.push({t,l:(l+2)%4,done:false,r:.97});
+    const gb=kk%8===0?0:kk%4===0?.2:kk%2===0?.4:.6,ob=!on||kk%2!==0;
+    const r=Math.min(.95,Math.max(0,gb*.5+(on?0:.15)+(1-Math.min(1,p.s/3))*.3+(1-Math.min(1,loc[p.i]/1.6))*.08+[0,0,.12,-.04][p.c]+(1-p.e)*.06)),t=pt+LEAD;
+    notes.push({t,l,done:false,r,c:p.c,ob,e:p.e});
+    if(D.dbl>0&&p.s>2.2&&rng()<D.dbl*.5)notes.push({t,l:(l+2)%4,done:false,r:.97,c:5,ob:false,e:p.e});
   }
   if(a.beatT.length>3&&notes.length>4){
-    const gf=Math.max(1.1*T*(diff.grid?2:1),.6),ts=notes.map(n=>n.t-LEAD).sort((x,y)=>x-y),add=[];let j=0;
+    const gf=Math.max(1.1*T*(D.grid?2:1),.6),ts=notes.map(n=>n.t-LEAD).sort((x,y)=>x-y),add=[];let j=0;
     a.beatT.forEach((bt,n)=>{
       if(bt<=ts[0]||bt>=ts[ts.length-1])return;
-      if((n-a.dph)%(diff.grid?2:1)!==0)return;
+      if((n-a.dph)%(D.grid?2:1)!==0)return;
       while(j<ts.length-1&&ts[j+1]<bt)j++;
       const prev=ts[j],next=ts[Math.min(j+1,ts.length-1)];
       const fi=Math.min(loc.length-1,Math.max(0,Math.round((bt*a.sr-a.N*.4)/a.hop)));
-      if(bt-prev>gf&&next-bt>gf&&loc[fi]>.5){add.push({t:bt+LEAD,l:[0,1,2,3,2,1][n%6],done:false,r:.55});ts.splice(j+1,0,bt);j++}
+      if(bt-prev>gf&&next-bt>gf&&loc[fi]>.5){add.push({t:bt+LEAD,l:[0,1,2,3,2,1][n%6],done:false,r:.55,c:4,ob:false,e:a.en?a.en[fi]:.5});ts.splice(j+1,0,bt);j++}
     });
     if(add.length)notes=notes.concat(add).sort((x,y)=>x.t-y.t);
   }
   if(notes.length<Math.max(8,dur/7)){
-    notes=[];const step=T*(diff.grid?2:1);let n=0;
-    if(a.beatT.length>3)a.beatT.forEach((bt,n)=>{if(n%(diff.grid?2:1)===0&&bt<dur-1)notes.push({t:bt+LEAD,l:[0,1,2,3,2,1][n%6],done:false,r:(n-a.dph)%4===0?.1:.5})});
-    else for(let t=a.off;t<dur-1;t+=step,n++)notes.push({t:t+LEAD,l:[0,1,2,3,2,1][n%6],done:false,r:n%4===0?.1:.5});
+    notes=[];const step=T*(D.grid?2:1);let n=0;
+    if(a.beatT.length>3)a.beatT.forEach((bt,n)=>{if(n%(D.grid?2:1)===0&&bt<dur-1)notes.push({t:bt+LEAD,l:[0,1,2,3,2,1][n%6],done:false,r:(n-a.dph)%4===0?.1:.5,c:4,ob:false,e:.5})});
+    else for(let t=a.off;t<dur-1;t+=step,n++)notes.push({t:t+LEAD,l:[0,1,2,3,2,1][n%6],done:false,r:n%4===0?.1:.5,c:4,ob:false,e:.5});
   }
-  if(!notes.length)notes.push({t:LEAD+1,l:0,done:false,r:0});
+  if(!notes.length)notes.push({t:LEAD+1,l:0,done:false,r:0,c:4,ob:false,e:.5});
   total=notes.length;endT=notes[notes.length-1].t;
 }
 function buildCustomOld(){
@@ -1061,7 +1196,7 @@ function drawCd(now){
   else if(state==='play'&&now<-.3)n=Math.ceil(-now-.3);
   if(n>=1&&n<=3){g.save();g.textAlign='center';g.globalAlpha=.92;g.fillStyle=INK;g.font='800 110px Bricolage Grotesque,system-ui,sans-serif';g.fillText(String(n),W/2,H*.42);g.font='800 16px Bricolage Grotesque,system-ui,sans-serif';g.fillText('Get ready',W/2,H*.42+34);g.restore()}
 }
-function toMenu(){if(mp&&mp.playing){mpToLobby();return}plRun=null;const rb=replaying&&rpFrom;leaveReplay();stopAudio();vidOn=false;artOn=false;$('art').hidden=true;$('vid').hidden=true;cv.classList.remove('vid');state='menu';if(testingEd){testingEd=false;openEditor();return}if(rb){openReplays();return}renderMenu();show('menu')}
+function toMenu(){if(mp&&mp.playing){mpToLobby();return}plRun=null;const rb=replaying&&rpFrom;leaveReplay();stopAudio();vidOn=false;artOn=false;$('art').hidden=true;$('vid').hidden=true;cv.classList.remove('vid');vidRelease();state='menu';if(testingEd){testingEd=false;openEditor();return}if(rb){openReplays();return}renderMenu();show('menu')}
 
 function adj(v){
   return; /* Auto is a fixed chart built before the song starts */
@@ -1107,7 +1242,7 @@ function finish(failed){
   if(diff.auto){const jd=counts.perfect+counts.good+counts.ok+counts.miss,eff=jd/Math.max(5,endT-notes[0].t);let bi=0,bd=1e9;DIFFS.forEach((d,i)=>{if(d.auto)return;const dd=Math.abs(npsFor(cur,i)-eff);if(dd<bd){bd=dd;bi=i}});lab='<br>'+autoNote+'<br>Chart density about '+DIFFS[bi].name+' ('+eff.toFixed(1)+' notes per second)'}
   if(!bot){
     const judged=counts.perfect+counts.good+counts.ok+counts.miss,sec=Math.max(5,endT-notes[0].t),nps=judged/sec;
-    if(judged>=20){const est=nps*(acc>=.92?1.2:acc>=.85?1.08:acc>=.72?.97:acc>=.55?.82:.65),sk=skillGet();skillSet({v:sk&&sk.v?sk.v*.55+est*.45:est});if(diff.auto)autoSet(cur.id,est);else histAdd(cur.id,{d:diff.id,nps,acc});if(!settings.mods.mirror&&!settings.mods.shuffle)laneSave()}
+    if(judged>=20)learn(acc,judged,nps);
   }
   $('grade').textContent=gr;
   $('etitle').textContent=cur.name+' ('+diff.name+')'+(failed?' - Failed':'')+(modsLabel()?' ['+modsLabel()+']':'');
@@ -1226,9 +1361,9 @@ function dbPut(st,v){return dbx(st,'readwrite',o=>o.put(v))}
 function dbDel(st,k){return dbx(st,'readwrite',o=>o.delete(k))}
 function dbAll(st){return dbx(st,'readonly',o=>o.getAll())}
 /* ---- imported song library ---- */
-function libSub(o){const an=o.an||o.cache,d=o.dur||(o.buf&&o.buf.duration)||0;return '~'+Math.round(o.bpm||0)+' BPM'+(an?', '+(an.stable?'steady tempo':an.conf>1.3?'tempo drifts':'loose tempo'):'')+', '+Math.floor(d/60)+':'+String(Math.floor(d%60)).padStart(2,'0')+(o.isVideo?', with video':'')}
+function libSub(o){const an=o.an||o.sum,d=o.dur||(o.buf&&o.buf.duration)||0;return '~'+Math.round(o.bpm||0)+' BPM'+(an?', '+(an.stable?'steady tempo':an.conf>1.3?'tempo drifts':'loose tempo')+(an.vf>.3?', vocals':'')+(an.tri?', triplet feel':''):'')+', '+Math.floor(d/60)+':'+String(Math.floor(d%60)).padStart(2,'0')+(o.isVideo?', with video':'')}
 function libEntry(rec){
-  const e={id:'lib-'+rec.id,recId:rec.id,lib:true,custom:true,name:rec.name,bpm:rec.bpm||120,beats:96,acc:'#ffb703',blob:rec.blob,isVideo:!!rec.isVideo,artBlob:rec.art||null,cache:rec.an||null,dur:rec.dur,an:null,buf:null,video:null,artUrl:null};
+  const e={id:'lib-'+rec.id,recId:rec.id,lib:true,custom:true,name:rec.name,bpm:rec.bpm||120,beats:96,acc:'#ffb703',blob:rec.blob,isVideo:!!rec.isVideo,artBlob:rec.art||null,cache:null,sum:rec.an?{stable:rec.an.stable,conf:rec.an.conf,vf:rec.an.vf,tri:rec.an.tri}:null,audBlob:rec.aud||null,dur:rec.dur,an:null,buf:null,video:null,artUrl:null};
   e.sub=libSub(e);e.fp=rec.fp||(rec.blob&&rec.blob.size+':'+Math.round((rec.dur||0)*100));return e;
 }
 function libSave(o,patch){dbGet('songs',o.recId).then(r=>{if(r)return dbPut('songs',Object.assign(r,patch))}).catch(()=>{})}
@@ -1240,8 +1375,9 @@ function ensureLoaded(o){
   o.loading=(async()=>{
     o.sub='Loading song...';renderMenu();
     if(!ac)ac=new (window.AudioContext||window.webkitAudioContext)();
-    o.buf=await ac.decodeAudioData(await o.blob.arrayBuffer());
-    if(o.cache)o.an=o.cache;
+    if(!o.cache){try{const r=await dbGet('songs',o.recId);if(r&&r.an)o.cache=r.an}catch(e){}}
+    o.buf=await ac.decodeAudioData(await (o.audBlob||o.blob).arrayBuffer());
+    if(o.cache&&o.cache.ver>=2)o.an=o.cache;
     else{o.an=await analyze(o.buf,p=>{o.sub='Analyzing '+Math.round(p*100)+'%...';renderMenu()});o.cache=o.an;libSave(o,{an:o.an})}
     o.bpm=o.an.bpm;o.dur=o.buf.duration;
     if(o.isVideo&&!o.video)o.video=URL.createObjectURL(o.blob);
@@ -1264,25 +1400,62 @@ async function libDelete(o){
   const i=SONGS.indexOf(o);if(i>=0)SONGS.splice(i,1);
   syncChartSongs();selS=0;renderMenu();toast('Song deleted.');
 }
-const isVid=f=>/^video\//.test(f.type)||/\.(mp4|mov|webm|m4v)$/i.test(f.name);
+const isVid=f=>/^video\//.test(f.type)||/\.(mp4|mov|webm|m4v|mkv|ogv|3gp|3g2|avi|ts|mts|m2ts|mpg|mpeg|wmv|flv)$/i.test(f.name);
+/* finds a container type this browser can actually play (MKV often plays when labelled as WebM or MP4) */
+async function probeVideo(f){
+  const ext=(f.name.split('.').pop()||'').toLowerCase(),map={mkv:['video/webm','video/mp4','video/x-matroska'],webm:['video/webm'],mov:['video/quicktime','video/mp4'],avi:['video/x-msvideo','video/mp4'],ogv:['video/ogg'],'3gp':['video/3gpp','video/mp4'],'3g2':['video/3gpp2','video/mp4'],ts:['video/mp2t','video/mp4'],mts:['video/mp2t','video/mp4'],m2ts:['video/mp2t','video/mp4'],mpg:['video/mpeg','video/mp4'],mpeg:['video/mpeg','video/mp4'],flv:['video/x-flv','video/mp4'],wmv:['video/x-ms-wmv','video/mp4']};
+  const cands=[f.type].concat(map[ext]||['video/mp4']).filter((x,i,a)=>x&&a.indexOf(x)===i);
+  for(const t of cands){
+    const b=f.type===t?f:new Blob([f],{type:t}),u=URL.createObjectURL(b),v=document.createElement('video');
+    const ok=await new Promise(res=>{const T=setTimeout(()=>res(false),7000);v.muted=true;v.playsInline=true;v.preload='metadata';v.onloadedmetadata=()=>{clearTimeout(T);res(v.videoWidth>0&&v.duration>0)};v.onerror=()=>{clearTimeout(T);res(false)};v.src=u});
+    v.removeAttribute('src');v.load();URL.revokeObjectURL(u);
+    if(ok)return b;
+  }
+  return null;
+}
+/* last resort for codecs decodeAudioData cannot read: play the file and record its audio (takes as long as the song) */
+async function extractAudio(b,onp){
+  const v=document.createElement('video'),u=URL.createObjectURL(b);v.playsInline=true;v.preload='auto';v.src=u;
+  try{
+    await new Promise((res,rej)=>{v.onloadedmetadata=res;v.onerror=()=>rej(new Error('media'));setTimeout(()=>rej(new Error('timeout')),10000)});
+    if(!isFinite(v.duration)||v.duration>2400)throw new Error('long');
+    const src=ac.createMediaElementSource(v),dst=ac.createMediaStreamDestination();src.connect(dst);
+    const mt=['audio/webm;codecs=opus','audio/webm','audio/mp4'].find(t=>MediaRecorder.isTypeSupported(t)),mr=new MediaRecorder(dst.stream,mt?{mimeType:mt}:undefined),ch=[];
+    mr.ondataavailable=e=>{if(e.data&&e.data.size)ch.push(e.data)};
+    const stopped=new Promise(r=>{mr.onstop=r});
+    if(ac.state!=='running')await Promise.race([ac.resume(),sleep(600)]);
+    mr.start(1000);await v.play();
+    await new Promise((res,rej)=>{const t=setInterval(()=>{if(onp)onp(Math.min(1,v.currentTime/v.duration))},400);v.onended=()=>{clearInterval(t);res()};v.onerror=()=>{clearInterval(t);rej(new Error('media'))}});
+    mr.stop();await stopped;
+    return new Blob(ch,{type:mr.mimeType||mt||'audio/webm'});
+  }finally{try{v.pause();v.removeAttribute('src');v.load()}catch(e){}URL.revokeObjectURL(u)}
+}
 async function importFile(f){
   const ph=SONGS[SONGS.length-1];if(ph.busy)return;
   ph.busy=true;ph.sub='Reading '+f.name+'...';renderMenu();
   try{
     if(!ac)ac=new (window.AudioContext||window.webkitAudioContext)();
-    const ab=await f.arrayBuffer(),tag=readTags(ab),buf=await ac.decodeAudioData(ab);
-    const base=f.name.replace(/\.[^.]+$/,''),v=isVid(f);
+    let vb=null,buf=null,aud=null,tag={};const v=isVid(f);
+    if(v){ph.sub='Checking the video...';renderMenu();vb=await probeVideo(f);if(!vb)toast('This browser cannot play that video format or codec, so only the audio will be used.')}
+    if(f.size<=150e6){try{const ab=await f.arrayBuffer();tag=readTags(ab)||{};buf=await ac.decodeAudioData(ab)}catch(e){buf=null}}
+    if(!buf){
+      const src=vb||(v?null:f);if(!src||!window.MediaRecorder)throw new Error('nodec');
+      toast('Extracting the audio. This takes about as long as the song.');
+      aud=await extractAudio(src,p=>{ph.sub='Extracting audio '+Math.round(p*100)+'%...';renderMenu()});
+      buf=await ac.decodeAudioData(await aud.arrayBuffer());
+    }
+    const base=f.name.replace(/\.[^.]+$/,'');
     const name=tag.title?(tag.artist?tag.artist+' - ':'')+tag.title:cleanName(base);
     const an=await analyze(buf,p=>{ph.sub='Analyzing '+Math.round(p*100)+'%...';renderMenu()});
-    const rec={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),name,blob:f,isVideo:v,art:(!v&&tag.art)||null,an,bpm:an.bpm,dur:buf.duration,added:Date.now()};
+    const rec={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),name,blob:vb||f,isVideo:!!vb,art:(!vb&&tag.art)||null,an,bpm:an.bpm,dur:buf.duration,added:Date.now(),aud:aud||null};
     let saved=true;try{await dbPut('songs',rec)}catch(e){saved=false}
     const o=libEntry(rec);o.buf=buf;o.an=an;o.sub=libSub(o);
-    if(v)o.video=URL.createObjectURL(f);
+    if(vb)o.video=URL.createObjectURL(vb);
     if(o.artBlob)o.artUrl=URL.createObjectURL(o.artBlob);
     SONGS.splice(SONGS.length-1,0,o);selS=SONGS.indexOf(o);
     toast(saved?'Song imported and saved.':'Imported, but this browser would not save it for next time.');
     ach('imp');
-  }catch(err){toast('Could not read that file. Try MP3, WAV, M4A, OGG, FLAC, MP4, MOV or WebM.')}
+  }catch(err){toast('Could not read that file. Try MP3, WAV, M4A, OGG, FLAC, MP4, MOV, WebM or MKV.')}
   ph.sub='Add an audio or video file from your device';ph.busy=false;renderMenu();
 }
 $('file').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)importFile(f)};
@@ -1586,7 +1759,7 @@ async function mpHostGo(){
   if(!r){toast('Could not create a lobby. Try again.');mpStatus();return}
   mp={r,code,host:true,pub:true,go:0,lastGo:0,seen:{},ci:0,sent:0,playing:false,finished:false,rewarded:false,song:mpSongs()[0].id,diff:'normal',hostGone:0,lastTick:0,advSig:'',advAt:0,timer:0};
   mp.un=r.onPeers(mpPeers);mp.um=r.onMsg(mpOnMsg);
-  mpSet(Object.assign(mpMe(),{host:1,song:mp.song,diff:mp.diff,pub:1,go:0,st:'lobby',rd:1,sc:0}));
+  mpSet(Object.assign(mpMe(),{host:1,song:mp.song,diff:mp.diff,df:mp.diff,pub:1,go:0,st:'lobby',rd:1,sc:0}));
   mpAdvertise();ach('mph');mpShowLobby();
 }
 async function mpJoinCode(code){
@@ -1600,10 +1773,10 @@ async function mpJoinCode(code){
   if(!host)return bad('No lobby found with that code. Make sure the host is still in the lobby.');
   if(r.peers().length>8)return bad('That lobby is full.');
   if(host.presence.st==='play')return bad('That match has already started.');
-  mp={r,code,host:false,pub:!!host.presence.pub,go:0,lastGo:mcl(host.presence.go,0,1e6),seen:{},ci:0,sent:0,playing:false,finished:false,rewarded:false,hostGone:0,lastTick:0,timer:0};
+  mp={r,code,host:false,diff:'normal',pub:!!host.presence.pub,go:0,lastGo:mcl(host.presence.go,0,1e6),seen:{},ci:0,sent:0,playing:false,finished:false,rewarded:false,hostGone:0,lastTick:0,timer:0};
   mp.un=r.onPeers(mpPeers);mp.um=r.onMsg(mpOnMsg);
   if(mpListUn){mpListUn();mpListUn=null}
-  mpSet(Object.assign(mpMe(),{st:'lobby',rd:0,sc:0}));
+  mpSet(Object.assign(mpMe(),{st:'lobby',rd:0,sc:0,diff:mp.diff,df:mp.diff}));
   mpShowLobby();return '';
 }
 function mpPeers(){
@@ -1617,7 +1790,7 @@ function mpPeers(){
       if(mp.cs&&!mp.cs.done&&!mp.cs.failed&&Date.now()-mp.cs.last>25000){mp.cs=null;mp.need='';toast('Song download stalled. Trying again...')}
       if(mp.cv&&!mp.cv.done&&!mp.cv.failed&&Date.now()-mp.cv.last>25000){mp.cv=null;if(mp.cs&&mp.cs.done)mp.r.msg({k:'need',cid:hc,w:'v'});toast('Video download stalled. Trying again...')}}
       const go=mcl(h.presence.go,0,1e6);
-      if(go>mp.lastGo){mp.lastGo=go;mpStartMatch(mst(h.presence.song,40),mst(h.presence.diff,20))}
+      if(go>mp.lastGo){mp.lastGo=go;mpStartMatch(mst(h.presence.song,40),mp.diff)}
     }
   }
   ps.forEach(p=>{
@@ -1646,12 +1819,12 @@ function mpRenderLobby(){
   $('mppubbtn').setAttribute('aria-pressed',mp.pub);$('mpprivbtn').setAttribute('aria-pressed',!mp.pub);
   $('mpcoderow').hidden=!mp.host;$('mpcodebox').value=mp.code;
   const sn=hpr.song==='mpx'?(mst(hpr.sn,40)||'Custom song'):(SONGS.find(x=>x.id===hpr.song)||{name:'?'}).name,dn=(DIFFS.find(x=>x.id===hpr.diff)||{name:'?'}).name;
-  $('mpinfo').textContent=sn+' | '+dn+(mp.host?'':(mp.pub?' | Public lobby':' | Private lobby'));
+  $('mpinfo').textContent=sn+(mp.host?'':(mp.pub?' | Public lobby':' | Private lobby'));
   const box=$('mpplayers');box.innerHTML='';
   ps.forEach(p=>{
     const pr=p.presence||{},row=document.createElement('div');row.className='rrow';
     const t=document.createElement('span');
-    t.textContent=(mst(pr.bd,2)?mst(pr.bd,2)+' ':'')+(mst(pr.n,16)||'Player')+' (Lv '+mcl(pr.lv,1,100)+')'+(p.isMe?' - you':'')+(pr.host===1?' - host':'');
+    t.textContent=(mst(pr.bd,2)?mst(pr.bd,2)+' ':'')+(mst(pr.n,16)||'Player')+' (Lv '+mcl(pr.lv,1,100)+')'+(p.isMe?' - you':'')+(pr.host===1?' - host':'')+' | '+((DIFFS.find(x=>x.id===(pr.df||pr.diff))||{}).name||'?');
     const st=document.createElement('span');st.textContent=pr.host===1?'':(hpr.song==='mpx'&&hpr.au&&pr.hs!==hpr.cid?(pr.dl>=0?'Downloading '+mcl(pr.dl,0,100)+'%':'Waiting for song'):(hpr.song==='mpx'&&hpr.vd&&pr.hv!==hpr.cid?(pr.vl>=0?'Video '+mcl(pr.vl,0,100)+'%':'Waiting for video'):(pr.rd?'Ready':'Not ready')));
     row.append(t,st);if(mp.host&&!p.isMe){const kb=document.createElement('button');kb.className='alt chip';kb.textContent='Kick';kb.onclick=()=>{mp.r.kick(p.peer);toast('Removed '+(mst(pr.n,16)||'player'))};row.appendChild(kb)}box.appendChild(row);
   });
@@ -1663,7 +1836,7 @@ function mpRenderLobby(){
 }
 function mpShowLobby(){
   if(!mp)return;
-  if(mp.host)mpFillSel();
+  mpFillSel();
   mpRenderLobby();show('mplobby');
   if(!mp.timer)mp.timer=setInterval(mpPeers,1000);
 }
@@ -1683,15 +1856,20 @@ function mpStartMatch(songId,diffId,ci){
 function mpDropTmp(){for(let i=SONGS.length-1;i>=0;i--)if(SONGS[i].mpTmp)SONGS.splice(i,1)}
 function mpNotesFor(s,di){const sv={cur,diff,selD,notes,total,endT,beat};let r=null;try{cur=s;diff=DIFFS[di];selD=di;beat=60/s.bpm;buildChart();r=notes.map(n=>[+n.t.toFixed(3),n.l])}catch(e){}({cur,diff,selD,notes,total,endT,beat}=sv);return r}
 async function mpPackage(){
-  const s=SONGS.find(x=>x.id===mp.sel),di=DIFFS.findIndex(d=>d.id===mp.diff);if(!s||di<0){toast('Pick a song first.');return false}
+  const s=SONGS.find(x=>x.id===mp.sel);if(!s){toast('Pick a song first.');return false}
   const b=s.chart?s.baseRef:s,kind=b.lib?'aud':'chart';
   if(kind==='aud'){await ensureLoaded(b);if(!b.buf||!b.an){toast('Could not load that song.');return false}if(mp.cs&&mp.cs.cid===b.recId)mp.cs.buf=b.buf;else mp.cs={cid:b.recId,buf:b.buf,blob:b.blob,done:true,meta:{name:b.name,fp:b.fp,bpm:b.bpm,dur:b.buf.duration}}}
-  const arr=kind==='aud'?mpNotesFor(s,di):s.cnotes.map(n=>[n[0],n[1]]);
-  if(!arr||!arr.length){toast('Could not build that chart.');return false}
-  const id=Date.now().toString(36),n=Math.ceil(arr.length/500),meta={k:'pk',id,kind,cid:b.recId||'',name:s.name,base:b.id,bpm:kind==='aud'?+(b.bpm||120):(s.cbpm||b.bpm),off:s.coff||0,n,vd:(kind==='aud'&&mp.cv&&mp.cv.done)?1:0};
+  const sets={};
+  /* every player plays their own level, so the host sends the notes for each level */
+  if(kind==='aud'&&!s.chart)mpDiffs().forEach(d=>{const a=mpNotesFor(s,DIFFS.indexOf(d));if(a&&a.length)sets[d.id]=a});
+  else if(kind==='aud')sets['*']=mpNotesFor(s,DIFFS.findIndex(d=>d.id===mp.diff));
+  else sets['*']=s.cnotes.map(n=>[n[0],n[1]]);
+  const keys=Object.keys(sets).filter(k=>sets[k]&&sets[k].length);if(!keys.length){toast('Could not build that chart.');return false}
+  const id=Date.now().toString(36),CH=500,meta={k:'pk',id,kind,cid:b.recId||'',name:s.name,base:b.id,bpm:kind==='aud'?+(b.bpm||120):(s.cbpm||b.bpm),off:s.coff||0,vd:(kind==='aud'&&mp.cv&&mp.cv.done)?1:0,ds:keys.map(k=>[k,Math.ceil(sets[k].length/CH)])};
   mp.r.msg(meta);
-  for(let i=0;i<n;i++){mp.r.msg({k:'pn',id,i,part:arr.slice(i*500,i*500+500)});if(i%4===3)await sleep(20)}
-  mp.pk={id,kind,cid:meta.cid,name:meta.name,base:meta.base,bpm:meta.bpm,off:meta.off,vd:meta.vd,n:1,got:1,done:true,parts:{0:arr}};
+  for(const k of keys){for(let i=0;i*CH<sets[k].length;i++){mp.r.msg({k:'pn',id,dk:k,i,part:sets[k].slice(i*CH,i*CH+CH)});if(i%4===3)await sleep(20)}}
+  const ls={};keys.forEach(k=>{ls[k]={n:1,got:1,parts:{0:sets[k]}}});
+  mp.pk={id,kind,cid:meta.cid,name:meta.name,base:meta.base,bpm:meta.bpm,off:meta.off,vd:meta.vd,done:true,sets:ls};
   return true;
 }
 function mpStartCustom(diffId,t){
@@ -1703,7 +1881,7 @@ function mpStartCustom(diffId,t){
     toast('The video did not arrive in time, so this round plays without it.');
   }
   mpDropTmp();
-  const arr=[].concat(...Object.keys(k.parts).sort((a,b)=>a-b).map(i=>k.parts[i])),ns=arr.map(n=>[+n[0]||0,mcl(n[1],0,3)]);let e;
+  const st=k.sets&&(k.sets[diffId]||k.sets['*']),arr=st?[].concat(...Object.keys(st.parts).sort((a,b)=>a-b).map(i=>st.parts[i])):[],ns=arr.map(n=>[+n[0]||0,mcl(n[1],0,3)]);let e;
   if(!ns.length){toast('That chart was empty.');return}
   if(k.kind==='chart'){const b=BASES().find(x=>x.id===k.base);if(!b){toast('You do not have the base song for this chart.');return}e=chartSong({id:'mpx',name:k.name,base:b.id,notes:ns,bpm:k.bpm,off:k.off})}
   else{const vu=vOk&&k.vd&&mp.cv?mp.cv.url:null;e={id:'mpc-'+k.cid,custom:true,name:k.name,sub:'Multiplayer song',bpm:k.bpm,beats:96,acc:'#ffb703',buf:mp.cs.buf,video:vu,isVideo:!!vu,an:{beatT:[],bpm:k.bpm,off:0,nf:0,stable:false,conf:0},mpNotes:ns}}
@@ -1763,8 +1941,8 @@ function mpOnMsg(d,from){
   if(!mp||!d)return;
   if(mp.host){if(d.k==='need'&&mp.cid&&d.cid===mp.cid){const w=d.w==='v'?'v':'a',c=w==='v'?mp.cv:mp.cs;if(c&&c.done&&c.blob)mpSendBlob(from,w)}return}
   if(d.k==='kick'){mpLeave('The host removed you from the lobby.');return}
-  if(d.k==='pk'){mp.pk={id:d.id,kind:d.kind==='aud'?'aud':'chart',cid:mst(d.cid,20),name:mst(d.name,40),base:mst(d.base,40),bpm:mcl(d.bpm,40,300),off:+d.off||0,n:mcl(d.n,1,20),vd:d.vd?1:0,got:0,parts:{},done:false};return}
-  if(d.k==='pn'&&mp.pk&&mp.pk.id===d.id&&Array.isArray(d.part)&&d.i>=0&&d.i<mp.pk.n){if(!mp.pk.parts[d.i]){mp.pk.parts[d.i]=d.part.slice(0,500);mp.pk.got++}if(mp.pk.got>=mp.pk.n)mp.pk.done=true;return}
+  if(d.k==='pk'){mp.pk={id:d.id,kind:d.kind==='aud'?'aud':'chart',cid:mst(d.cid,20),name:mst(d.name,40),base:mst(d.base,40),bpm:mcl(d.bpm,40,300),off:+d.off||0,vd:d.vd?1:0,done:false,sets:{}};(Array.isArray(d.ds)?d.ds:[]).slice(0,12).forEach(x=>{if(Array.isArray(x))mp.pk.sets[mst(x[0],20)]={n:mcl(x[1],1,20),got:0,parts:{}}});return}
+  if(d.k==='pn'&&mp.pk&&mp.pk.id===d.id&&Array.isArray(d.part)){const t=mp.pk.sets[mst(d.dk,20)];if(t&&d.i>=0&&d.i<t.n&&!t.parts[d.i]){t.parts[d.i]=d.part.slice(0,500);t.got++}mp.pk.done=Object.keys(mp.pk.sets).every(k=>mp.pk.sets[k].got>=mp.pk.sets[k].n);return}
   if(d.k==='am'){mp.cs={cid:mst(d.cid,20),n:mcl(d.n,1,8000),mime:mst(d.mime,40),parts:[],got:0,done:false,last:Date.now()};return}
   if(d.k==='vm'){mp.cv={cid:mst(d.cid,20),n:mcl(d.n,1,8000),mime:mst(d.mime,40),parts:[],got:0,done:false,last:Date.now()};return}
   if(d.k==='ac'&&mp.cs&&mp.cs.cid===d.cid&&!mp.cs.done&&d.b&&d.i>=0&&d.i<mp.cs.n){
@@ -1802,16 +1980,16 @@ function mpResultsRender(){
   mpRanked().forEach((p,i)=>{
     const pr=p.presence,row=document.createElement('div');row.className='rrow';
     const t=document.createElement('span');
-    t.textContent=ord(i+1)+' | '+(mst(pr.bd,2)?mst(pr.bd,2)+' ':'')+mst(pr.n,16)+(p.isMe?' (you)':'')+' | '+mcl(pr.sc,0,1e9)+(pr.st==='done'?' | '+mcl(pr.ac,0,100).toFixed(1)+'% '+mst(pr.gr,3):' | playing '+mcl(pr.pg,0,100)+'%');
+    t.textContent=ord(i+1)+' | '+(mst(pr.bd,2)?mst(pr.bd,2)+' ':'')+mst(pr.n,16)+(p.isMe?' (you)':'')+' ['+((DIFFS.find(x=>x.id===(pr.df||pr.diff))||{}).name||'?')+'] | '+mcl(pr.sc,0,1e9)+(pr.st==='done'?' | '+mcl(pr.ac,0,100).toFixed(1)+'% '+mst(pr.gr,3):' | playing '+mcl(pr.pg,0,100)+'%');
     row.appendChild(t);box.appendChild(row);
   });
 }
 function mpFinishHook(acc,gr,failed){
   const rs=['again','back','rpbtn','rpcmp'];
-  if(!mp||!mp.playing){$('mpres').hidden=true;$('mpbackbtn').hidden=true;rs.forEach(i=>{$(i).hidden=false});return}
+  if(!mp||!mp.playing){$('end').classList.remove('mpmode');$('mpres').hidden=true;$('mpbackbtn').hidden=true;rs.forEach(i=>{$(i).hidden=false});return}
   mp.finished=true;
   mpSet({st:'done',sc:score,cb:maxCombo,pg:100,ac:Math.round(acc*1000)/10,gr,fl:failed?1:0});
-  $('mpres').hidden=false;$('mpbackbtn').hidden=false;rs.forEach(i=>{$(i).hidden=true});
+  $('mpres').hidden=false;$('mpbackbtn').hidden=false;rs.forEach(i=>{$(i).hidden=true});$('end').classList.add('mpmode');$('end').scrollTop=0;
   mpResultsRender();
   clearTimeout(mp.fto);mp.fto=setTimeout(()=>mpFinalize(),25000);
 }
@@ -1834,8 +2012,8 @@ function mpToLobby(){
   if(!mp)return;
   clearTimeout(mp.fto);
   mp.playing=false;mp.finished=false;
-  if(mpMods){settings.mods=mpMods;mpMods=null}bot=mpBot;mpDropTmp();selS=0;vidOn=false;artOn=false;$('vid').hidden=true;$('art').hidden=true;cv.classList.remove('vid');try{$('vid').pause()}catch(e){}
-  ['again','back','rpbtn','rpcmp'].forEach(i=>{$(i).hidden=false});$('mpbackbtn').hidden=true;$('mpres').hidden=true;
+  if(mpMods){settings.mods=mpMods;mpMods=null}bot=mpBot;mpDropTmp();selS=0;vidOn=false;artOn=false;$('vid').hidden=true;$('art').hidden=true;cv.classList.remove('vid');vidRelease();
+  ['again','back','rpbtn','rpcmp'].forEach(i=>{$(i).hidden=false});$('mpbackbtn').hidden=true;$('mpres').hidden=true;$('end').classList.remove('mpmode');
   mpSet({st:'lobby',rd:mp.host?1:0,sc:0,cb:0,pg:0,pz:0});
   mpAdvertise();stopAudio();vidOn=false;artOn=false;state='menu';
   mpShowLobby();
@@ -1844,8 +2022,8 @@ async function mpLeave(msg){
   if(!mp)return;const m=mp;mp=null;mpFreeMedia(m);
   clearInterval(m.timer);clearTimeout(m.fto);try{if(m.un)m.un()}catch(e){}
   if(m.host&&rm){try{await rm.advertise(m.code,null)}catch(e){}}
-  if(mpMods){settings.mods=mpMods;mpMods=null}bot=mpBot;mpDropTmp();selS=0;vidOn=false;artOn=false;$('vid').hidden=true;$('art').hidden=true;cv.classList.remove('vid');try{$('vid').pause()}catch(e){}
-  ['again','back','rpbtn','rpcmp'].forEach(i=>{$(i).hidden=false});$('mpbackbtn').hidden=true;$('mpres').hidden=true;
+  if(mpMods){settings.mods=mpMods;mpMods=null}bot=mpBot;mpDropTmp();selS=0;vidOn=false;artOn=false;$('vid').hidden=true;$('art').hidden=true;cv.classList.remove('vid');vidRelease();
+  ['again','back','rpbtn','rpcmp'].forEach(i=>{$(i).hidden=false});$('mpbackbtn').hidden=true;$('mpres').hidden=true;$('end').classList.remove('mpmode');
   try{await m.r.leave()}catch(e){}
   if(msg)toast(msg);
   stopAudio();state='menu';show('mp');mpStatus();
@@ -1904,7 +2082,7 @@ $('mpsong').onchange=async()=>{
   }else{mp.cid='';mp.song=v;mp.cs=null;mp.cv=null;mpSet({song:v,sn:'',cid:'',au:0,vd:0})}
   mpAdvertise();mpRenderLobby();
 };
-$('mpdiff').onchange=()=>{if(!mp||!mp.host)return;mp.diff=$('mpdiff').value;mpSet({diff:mp.diff});mpAdvertise();mpRenderLobby()};
+$('mpdiff').onchange=()=>{if(!mp)return;mp.diff=$('mpdiff').value;mpSet({diff:mp.diff,df:mp.diff});if(mp.host)mpAdvertise();mpRenderLobby()};
 $('mpcopy').onclick=()=>{
   const v=mp?mp.code:'';if(!v)return;
   const ok=()=>toast('Code copied.'),fail=()=>{const b=$('mpcodebox');b.focus();b.select();let c=false;try{c=document.execCommand('copy')}catch(e){}c?ok():toast('Select the code and copy it.')};
@@ -1939,10 +2117,10 @@ function saveRun(acc,gr,failed){
   lastRun=run;
   (async()=>{try{
     const same=r=>r.songId===run.songId&&r.diffId===run.diffId;
-    const top=((await dbAll('replays'))||[]).filter(same).find(r=>r.best);
+    const all=(await dbAll('replays'))||[],top=all.filter(same).find(r=>r.best);
     if(!run.failed&&!run.mods.nofail&&(!top||run.score>top.score)){if(top){top.best=false;await dbPut('replays',top)}run.best=true}
     await dbPut('replays',run);
-    const old=((await dbAll('replays'))||[]).filter(r=>same(r)&&!r.best).sort((a,b)=>b.ts-a.ts).slice(5);
+    const old=all.filter(r=>same(r)&&!r.best).concat(run.best?[]:[run]).sort((a,b)=>b.ts-a.ts).slice(5).concat(all.filter(r=>!r.best&&!same(r)).sort((a,b)=>b.ts-a.ts).slice(120));
     for(const r of old)await dbDel('replays',r.key);
   }catch(e){}})();
 }
@@ -2103,12 +2281,6 @@ $('spd').oninput=e=>{settings.spd=e.target.value/100;saveSettings();syncSettings
 $('off').oninput=e=>{settings.off=+e.target.value;saveSettings();syncSettings()};
 [['popbtn','pops'],['flbtn','flash'],['prvbtn','prev']].forEach(([id,k])=>{$(id).onclick=()=>{settings[k]=!settings[k];saveSettings();syncSettings()}});
 $('rkeys').onclick=()=>{KEYS=DEF.keys.slice();settings.keys=KEYS.slice();rebind=null;saveSettings();syncSettings()};
-$('rdata').onclick=()=>{
-  if(!rc2){rc2=1;$('rdata').textContent='Tap again to confirm';setTimeout(()=>{rc2=0;$('rdata').textContent='Reset play data'},3000);return}
-  try{Object.keys(localStorage).filter(k=>k.indexOf('fl:')===0&&k!=='fl:settings'&&k!=='fl:mobile'&&k!=='fl:fav'&&k!=='fl:prof'&&k!=='fl:charts'&&k!=='fl:pl').forEach(k=>localStorage.removeItem(k))}catch(e){}
-  try{dbx('replays','readwrite',st=>st.clear()).catch(()=>{})}catch(e){}
-  lastRun=null;rc2=0;$('rdata').textContent='Reset play data';renderMenu();
-};
 const THEME_ROOT=document.documentElement;
 function applyTheme(i){settings.theme=i;COL=THEMES[i].slice();COL.forEach((c,j)=>THEME_ROOT.style.setProperty('--c'+j,c))}
 function renderThemes(){
@@ -2339,7 +2511,7 @@ function renderAch(){
   ACH.forEach(a=>{const p=document.createElement('p'),d=!!prof.ach[a[0]];p.textContent=(d?'\u2605 ':'\u2606 ')+a[1]+': '+a[2]+(d?' (unlocked)':'');p.style.color=d?'var(--ink)':'var(--dim)';p.style.fontWeight=d?'800':'500';h.appendChild(p)});
   $('achsum').textContent=Object.keys(prof.ach).length+' of '+ACH.length+' unlocked. Each gives 50 bonus XP.';
 }
-$('profbtn').onclick=()=>{renderProf();show('prof');try{const t=+localStorage.getItem('fl:lastbk');$('bkmsg').textContent=t?'Last backup file: '+new Date(t).toLocaleDateString()+'.':'No backup file saved yet.'}catch(e){}};
+$('profbtn').onclick=()=>{renderProf();show('prof');skillText();try{const t=+localStorage.getItem('fl:lastbk');$('bkmsg').textContent=t?'Last backup file: '+new Date(t).toLocaleDateString()+'.':'No backup file saved yet.'}catch(e){}};
 $('ptitle').onchange=e=>{prof.title=+e.target.value;saveProf();renderProf()};
 $('pbadge').onchange=e=>{prof.badge=+e.target.value;saveProf();renderProf()};
 $('uname').oninput=e=>{prof.name=e.target.value.replace(/[<>]/g,'').trim().slice(0,16)||'Player';saveProf()};
@@ -2406,6 +2578,13 @@ $('plplay').onclick=plPlay;$('plshuf').onclick=()=>{plShuf=!plShuf;plRender()};
 $('plren').onclick=()=>{const p=pls.find(x=>x.id===plSel);if(!p)return;const n=(prompt('Rename playlist',p.name)||'').trim().slice(0,30);if(n){p.name=n;plSave();renderMenu()}};
 {let arm=0;$('pldel').onclick=()=>{if(!arm){arm=1;$('pldel').textContent='Tap again';setTimeout(()=>{arm=0;$('pldel').textContent='Delete'},3000);return}arm=0;$('pldel').textContent='Delete';pls=pls.filter(x=>x.id!==plSel);plSel='';plSave();renderMenu()}}
 $('plpc').onclick=()=>$('plpop').classList.add('hide');
+$('rdata').onclick=ddOpen;$('ddback').onclick=()=>show('settings');
+$('ddall').onclick=()=>{['scores','prof','fav','pl','charts','replays','songs','set'].forEach(k=>ddSel.add(k));ddRender()};
+$('ddnone').onclick=()=>{ddSel.clear();ddRender()};
+$('ddmem').onclick=()=>{freeMem(true);toast('Memory freed.')};
+$('dddo').onclick=()=>{if(!ddSel.size){toast('Pick something to delete first.');return}if(!ddArm){ddArm=1;$('dddo').textContent='Tap again to delete '+ddSel.size+' item'+(ddSel.size>1?'s':'')+' for good';setTimeout(()=>{ddArm=0;$('dddo').textContent='Delete selected'},4000);return}ddArm=0;ddRun()};
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='menu')freeMem(false)});
+$('vid').onerror=()=>{if(vidOn){vidOn=false;$('vid').hidden=true;cv.classList.remove('vid');toast('This video could not be played here. Playing without it.')}};
 ['pointerdown','touchend','keydown','click'].forEach(t=>document.addEventListener(t,acUnlock,{capture:true,passive:true}));
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&ac&&state!=='pause'&&ac.state!=='running')ac.resume().catch(()=>{})});
 ['touchstart','touchmove','touchend'].forEach(t=>cv.addEventListener(t,e=>e.preventDefault(),{passive:false}));
