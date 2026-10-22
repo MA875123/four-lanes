@@ -103,7 +103,7 @@ button{transition:transform .08s,background .15s}button:active{transform:scale(.
 .dock{position:sticky;bottom:0;z-index:3;width:100%;display:flex;gap:8px;padding:12px 0;margin-top:auto;background:linear-gradient(transparent,var(--bg) 28%)}
 .dock .main{flex:1;font-size:20px;background:var(--acc);color:#161226;box-shadow:0 6px 22px color-mix(in srgb,var(--acc) 45%,transparent)}
 .dock .alt{padding:12px 20px;background:var(--panel)}
-#plpop,#fpop,#linkpop{z-index:6;background:color-mix(in srgb,var(--bg) 97%,transparent)}#plpl{display:flex;flex-direction:column;gap:8px;width:100%}
+#plpop,#fpop,#linkpop,#padpop{z-index:6;background:color-mix(in srgb,var(--bg) 97%,transparent)}#plpl{display:flex;flex-direction:column;gap:8px;width:100%}
 .rrow{background:var(--panel)}
 body.mobile #menu{padding:10px 14px 0}
 body.mobile .chip,body.mobile .alt{min-height:42px}
@@ -137,6 +137,8 @@ input,textarea,select{-webkit-user-select:text;user-select:text;font-size:16px}
 body.mobile #pbtn{padding:0;width:52px;height:52px;font-size:0}
 #pause{gap:12px}#pinfo{text-align:center;font-size:14px}
 .pbar{width:100%;height:8px;border-radius:99px;background:var(--panel);overflow:hidden}.pbar i{display:block;height:100%;width:0;background:var(--acc)}
+#padlanes i{display:block;width:60px;height:60px;border-radius:14px;background:var(--panel);border:2px solid var(--line);transition:background .05s}
+#padlanes i.on:nth-child(1){background:var(--c0)}#padlanes i.on:nth-child(2){background:var(--c1)}#padlanes i.on:nth-child(3){background:var(--c2)}#padlanes i.on:nth-child(4){background:var(--c3)}
 </style>
 </head>
 <body>
@@ -334,6 +336,7 @@ body.mobile #pbtn{padding:0;width:52px;height:52px;font-size:0}
       <div class="srow"><span>Song preview on select</span><button class="alt" id="prvbtn">On</button></div>
       <div class="srow"><span>Background video</span><button class="alt" id="vdbtn">On</button></div>
       <div class="srow"><span>Countdown sounds</span><button class="alt" id="cdbtn">On</button></div>
+      <div class="srow"><span>Controller</span><button class="alt" id="padset">Set up</button></div>
       <div class="srow"><span>Hit text</span><button class="alt" id="popbtn">On</button></div>
       <div class="srow"><span>Beat flash</span><button class="alt" id="flbtn">On</button></div>
       
@@ -367,7 +370,8 @@ body.mobile #pbtn{padding:0;width:52px;height:52px;font-size:0}
   </div>
 <div class="screen hide" id="deldata"><h2>Delete data</h2><p id="ddinfo" style="font-size:13px"></p><div class="set" id="ddlist"></div><div class="row"><button class="alt chip" id="ddall">Select all</button><button class="alt chip" id="ddnone">Clear</button><button class="alt chip" id="ddmem">Free memory now</button></div><button class="main" id="dddo">Delete selected</button><button class="alt" id="ddback">Back</button></div>
 <div class="screen hide" id="fpop"><h2>Filter songs</h2><div class="set" id="fbody"></div><div class="row"><button class="alt" id="freset">Clear filter</button><button class="main" id="fdone">Close</button></div></div>
-<div class="screen hide" id="linkpop"><h2>Add from link</h2><p style="font-size:13px;text-align:center">Paste a direct link to an audio or video file (MP3, M4A, OGG, WAV, MP4, WebM). The website has to allow other pages to download it. YouTube links cannot be used.</p><input class="nm" id="linkurl" type="url" inputmode="url" placeholder="https://example.com/song.mp3" autocapitalize="off" autocorrect="off" spellcheck="false"><p id="linkmsg" style="font-size:13px;text-align:center"></p><button class="main" id="linkgo">Add song</button><button class="alt" id="linkx">Cancel</button></div>
+<div class="screen hide" id="padpop"><h2>Controller</h2><p id="padinfo" style="font-size:13px;text-align:center"></p><div class="row" id="padlanes"><i></i><i></i><i></i><i></i></div><p id="padstep" style="font-weight:800;text-align:center;min-height:1.4em"></p><div class="row"><button class="main" id="padstart">Set up buttons</button><button class="alt" id="padskip" hidden>Skip</button></div><div class="row"><button class="alt" id="padreset">Use default layout</button><button class="alt" id="padx">Close</button></div></div>
+<div class="screen hide" id="linkpop"><h2>Add from link</h2><p style="font-size:13px;text-align:center">Paste a direct link to an audio or video file (MP3, M4A, OGG, WAV, MP4, WebM). GitHub, Dropbox and Google Drive file links are converted for you. YouTube, Spotify and SoundCloud links cannot be used.</p><input class="nm" id="linkurl" type="url" inputmode="url" placeholder="https://example.com/song.mp3" autocapitalize="off" autocorrect="off" spellcheck="false"><p id="linkmsg" style="font-size:13px;text-align:center"></p><button class="main" id="linkgo">Add song</button><button class="alt" id="linkx">Cancel</button><details style="width:100%"><summary style="text-align:center">Advanced</summary><p style="font-size:12px">Most websites stop other pages from downloading their files. When that happens the link is tried through public relay services, so those services can see the link. To avoid that, host your own relay and paste its address here. It should end in ?url=</p><input class="nm" id="linkrelay" type="url" placeholder="https://your-relay.workers.dev/?url=" autocapitalize="off" spellcheck="false"></details></div>
 <div class="screen hide" id="plpop"><h2 id="plpt"></h2><div id="plpl"></div><button class="alt" id="plpc">Close</button></div>
 </div>
 <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
@@ -435,25 +439,49 @@ function fLabel(){const f=FLT.find(x=>x[0]===lf)||FLT[0];$('fbtn').textContent='
 function fRender(){const h=$('fbody');h.innerHTML='';FLT.forEach(([k,l])=>{const b=document.createElement('button');b.className='alt';b.textContent=l;b.setAttribute('aria-pressed',lf===k);b.onclick=()=>{lf=k;renderMenu();$('fpop').classList.add('hide')};h.appendChild(b)})}
 /* audio unlock: browsers keep audio suspended until a tap, which made music and countdowns stall */
 const YTRE=/(^|\.)(youtube\.com|youtu\.be|youtube-nocookie\.com)$/i;
-function linkOpen(){$('linkmsg').textContent='';$('linkurl').value='';$('linkgo').disabled=false;$('linkpop').classList.remove('hide');setTimeout(()=>{try{$('linkurl').focus()}catch(e){}},60)}
+function linkOpen(){$('linkmsg').textContent='';$('linkurl').value='';try{$('linkrelay').value=localStorage.getItem('fl:relay')||''}catch(e){}$('linkgo').disabled=false;$('linkpop').classList.remove('hide');setTimeout(()=>{try{$('linkurl').focus()}catch(e){}},60)}
+function linkRewrite(u){
+  const h=u.hostname.toLowerCase();
+  try{
+    if(h==='github.com'){const m=u.pathname.match(/^\/([^/]+)\/([^/]+)\/(?:blob|raw)\/(.+)$/);if(m)return 'https://raw.githubusercontent.com/'+m[1]+'/'+m[2]+'/'+m[3]}
+    if(/(^|\.)dropbox\.com$/.test(h)){const x=new URL(u.href);x.hostname='dl.dropboxusercontent.com';x.searchParams.delete('dl');x.searchParams.set('raw','1');return x.href}
+    if(h==='drive.google.com'){const m=u.pathname.match(/\/file\/d\/([^/]+)/),id=m?m[1]:u.searchParams.get('id');if(id)return 'https://drive.google.com/uc?export=download&id='+id}
+  }catch(e){}
+  return u.href;
+}
+async function linkFetch(url,m,label){
+  const ab=new AbortController(),T=setTimeout(()=>ab.abort(),30000);let r;
+  try{r=await fetch(url,{mode:'cors',signal:ab.signal})}finally{clearTimeout(T)}
+  if(!r.ok)throw new Error('http');
+  const ct=(r.headers.get('content-type')||'').split(';')[0].toLowerCase();
+  if(/^text\/|json|xml/.test(ct)){const e=new Error('page');e.page=true;throw e}
+  const len=+r.headers.get('content-length')||0;if(len>400e6)throw new Error('big');
+  const rd=r.body&&r.body.getReader?r.body.getReader():null,parts=[];let got=0;
+  if(rd){for(;;){const x=await rd.read();if(x.done)break;parts.push(x.value);got+=x.value.length;if(got>400e6)throw new Error('big');m(label+' '+(len?Math.round(got/len*100)+'%':(got/1048576).toFixed(1)+' MB'))}}
+  const blob=rd?new Blob(parts):await r.blob();
+  if(blob.size<2048)throw new Error('tiny');
+  return {blob,ct};
+}
 async function linkImport(){
   const raw=$('linkurl').value.trim(),m=t=>{$('linkmsg').textContent=t};let u;
   try{u=new URL(raw)}catch(e){m('That does not look like a link.');return}
   if(!/^https?:$/.test(u.protocol)){m('Only http and https links work.');return}
   if(YTRE.test(u.hostname)){m('YouTube does not allow its videos to be downloaded, and a web page cannot read them anyway. Use Add from file with a file you have the rights to use, or paste a direct link to the file.');return}
-  m('Downloading...');$('linkgo').disabled=true;
-  try{
-    const r=await fetch(u.href,{mode:'cors'});if(!r.ok)throw new Error('http');
-    const len=+r.headers.get('content-length')||0;if(len>400e6)throw new Error('big');
-    const rd=r.body&&r.body.getReader?r.body.getReader():null,parts=[];let got=0;
-    if(rd){for(;;){const x=await rd.read();if(x.done)break;parts.push(x.value);got+=x.value.length;if(got>400e6)throw new Error('big');m('Downloading '+(len?Math.round(got/len*100)+'%':(got/1048576).toFixed(1)+' MB')+'...')}}
-    const blob=rd?new Blob(parts):await r.blob(),ct=(r.headers.get('content-type')||'').split(';')[0];
-    let nm='song';try{nm=decodeURIComponent((u.pathname.split('/').pop()||'song').replace(/\+/g,' '))||'song'}catch(e){}
-    const ext=/\.[a-z0-9]{2,4}$/i.test(nm)?'':(/video/.test(ct)?'.mp4':/webm/.test(ct)?'.webm':/ogg/.test(ct)?'.ogg':/wav/.test(ct)?'.wav':'.mp3');
-    $('linkpop').classList.add('hide');
-    importFile(new File([blob],nm+ext,{type:ct&&ct!=='application/octet-stream'?ct:blob.type}));
-  }catch(e){m(e.message==='big'?'That file is over 400 MB.':'Could not download that link. The website probably blocks other pages from downloading it. Download the file and use Add from file instead.')}
+  const rl=$('linkrelay').value.trim();try{localStorage.setItem('fl:relay',rl)}catch(e){}
+  const url=linkRewrite(u),enc=encodeURIComponent(url),tries=[['Downloading',url]];
+  if(rl)tries.push(['Downloading through your relay',rl.indexOf('{url}')>=0?rl.replace('{url}',enc):rl+enc]);
+  tries.push(['Trying a public relay','https://corsproxy.io/?url='+enc],['Trying another relay','https://api.allorigins.win/raw?url='+enc],['Trying one more relay','https://api.codetabs.com/v1/proxy/?quest='+enc]);
+  $('linkgo').disabled=true;let got=null,page=false,big=false;
+  for(let i=0;i<tries.length&&!got;i++){
+    m(tries[i][0]+'...');
+    try{got=await linkFetch(tries[i][1],m,tries[i][0])}catch(e){if(e.page)page=true;if(e.message==='big'){big=true;break}}
+  }
   $('linkgo').disabled=false;
+  if(!got){m(big?'That file is over 400 MB.':page?'That link opens a web page, not a media file. Copy the direct link to the file (it usually ends in .mp3 or .mp4), or use Add from file.':'Could not download that link. The website blocks other pages from downloading it, and the public relays could not get it either. Download the file and use Add from file, or set up your own relay under Advanced.');return}
+  let nm='song';try{nm=decodeURIComponent((u.pathname.split('/').pop()||'song').replace(/\+/g,' '))||'song'}catch(e){}
+  const ct=got.ct,ext=/\.[a-z0-9]{2,4}$/i.test(nm)?'':(/video/.test(ct)?'.mp4':/webm/.test(ct)?'.webm':/ogg/.test(ct)?'.ogg':/wav/.test(ct)?'.wav':'.mp3');
+  $('linkpop').classList.add('hide');
+  importFile(new File([got.blob],nm+ext,{type:ct&&ct!=='application/octet-stream'?ct:got.blob.type}));
 }
 function vidRelease(){try{const v=$('vid');v.pause();v.removeAttribute('src');v.load()}catch(e){}}
 function freeMem(all){
@@ -490,7 +518,7 @@ async function ddRun(){
     if(S.has('fav'))localStorage.removeItem('fl:fav');
     if(S.has('pl'))localStorage.removeItem('fl:pl');
     if(S.has('charts')){localStorage.removeItem('fl:charts');localStorage.removeItem('fl:eddraft')}
-    if(S.has('set'))['fl:settings','fl:mobile','fl:seen'].forEach(k=>localStorage.removeItem(k));
+    if(S.has('set'))['fl:settings','fl:mobile','fl:seen','fl:pad'].forEach(k=>localStorage.removeItem(k));
     if(S.has('replays'))await dbx('replays','readwrite',st=>st.clear());
     if(S.has('songs')){
       await dbx('songs','readwrite',st=>st.clear());
@@ -501,14 +529,67 @@ async function ddRun(){
   }catch(e){}
   toast('Deleted. Reloading...');setTimeout(()=>location.reload(),900);
 }
-let acRt=0,outDead=false,frozenC=null,padPrev=[];
-/* controller: X A Y B or the d-pad play the lanes, Start pauses */
+let acRt=0,outDead=false,frozenC=null;
+/* controllers: works with standard pads (Xbox, PS4, PS5, Switch Pro, 8BitDo...) and odd ones (d-pad as a hat or as axes),
+   and any pad can be set up button by button */
+let padMap={},padSetup=null,padLast=[false,false,false,false],padStart=false,padDeb=0;
+try{padMap=JSON.parse(localStorage.getItem('fl:pad'))||{}}catch(e){}
+const PAD_NAMES=['Lane 1 (far left)','Lane 2','Lane 3','Lane 4 (far right)','Pause (optional)'];
+function padList(){try{return Array.from((navigator.getGamepads&&navigator.getGamepads())||[]).filter(x=>x&&x.connected&&x.buttons&&x.buttons.length)}catch(e){return[]}}
+/* every pressed input becomes a code: 0-31 buttons, 100-103 left stick, 104-107 right stick, 110-113 d-pad (left, right, up, down) */
+function padCodes(gp){
+  const c=new Set(),std=gp.mapping==='standard',B=gp.buttons,A=gp.axes||[];
+  B.forEach((b,i)=>{if(b&&(b.pressed||b.value>.6))c.add(i)});
+  const dir=(i,n)=>A[i]!=null&&Math.abs(A[i])>.65?(A[i]<0?n:n+1):-1;
+  let t=dir(0,100);if(t>=0)c.add(t);t=dir(1,102);if(t>=0)c.add(t);
+  if(std){t=dir(2,104);if(t>=0)c.add(t);t=dir(3,106);if(t>=0)c.add(t)}
+  const bp=i=>!!(B[i]&&B[i].pressed);
+  let l=std&&bp(14),r=std&&bp(15),u=std&&bp(12),d=std&&bp(13);
+  if(!std){
+    const h=A[9];
+    if(h!=null&&h<1.2){const k=Math.round((h+1)*3.5);if(k===0||k===1||k===7)u=true;if(k>=1&&k<=3)r=true;if(k>=3&&k<=5)d=true;if(k>=5&&k<=7)l=true}
+    else if(A.length>=8){if(A[6]<-.5)l=true;if(A[6]>.5)r=true;if(A[7]<-.5)u=true;if(A[7]>.5)d=true}
+  }
+  if(l)c.add(110);if(r)c.add(111);if(u)c.add(112);if(d)c.add(113);
+  return c;
+}
+const padDefault=gp=>gp.mapping==='standard'?{lanes:[[2,110,100,4,6],[0,113,103],[3,112,102],[1,111,101,5,7]],pause:[9]}:{lanes:[[0,110,100,4],[1,113,103],[2,112,102],[3,111,101,5]],pause:[9]};
+function padInfo(){
+  const ps=padList();
+  $('padinfo').textContent=ps.length?'Found: '+ps.map(g=>g.id.slice(0,50)).join(' | ')+'. Press buttons: the squares light up when a lane is pressed. If they do not match what you expect, use Set up buttons.':'No controller found. Connect it, then press any button on it. Some browsers only show a pad after a button press.';
+}
+function padFinish(){
+  const S=padSetup;if(!S)return;
+  if(!S.map.pause.length)S.map.pause=[9];
+  padMap[S.id]=S.map;try{localStorage.setItem('fl:pad',JSON.stringify(padMap))}catch(e){}
+  padSetup=null;$('padstep').textContent='Saved. Press your buttons to check them.';$('padskip').hidden=true;
+}
+function padSetupTick(all){
+  const S=padSetup;if(performance.now()<padDeb)return;
+  const fresh=[...all].filter(x=>!S.held.has(x));S.held=new Set(all);
+  if(!fresh.length)return;
+  const code=fresh[0],used=S.map.lanes.some(a=>a.includes(code))||S.map.pause.includes(code);
+  if(used){$('padstep').textContent='That one is already used. Press a different button for '+PAD_NAMES[S.step];return}
+  if(S.step<4)S.map.lanes[S.step]=[code];else S.map.pause=[code];
+  S.step++;padDeb=performance.now()+300;
+  if(S.step>=5){padFinish();return}
+  $('padstep').textContent='Now press the button for '+PAD_NAMES[S.step];$('padskip').hidden=S.step<4;
+}
 function pollPad(){
-  if(!navigator.getGamepads)return;
-  const gp=[...navigator.getGamepads()].find(x=>x&&x.connected);if(!gp){padPrev=[];return}
-  const down=b=>!!(gp.buttons[b]&&gp.buttons[b].pressed);
-  [[2,14,4,6],[0,13],[3,12],[1,15,5,7]].forEach((bs,l)=>{const d=bs.some(down);if(d&&!padPrev[l]&&state==='play')press(l);padPrev[l]=d});
-  const st=down(9);if(st&&!padPrev[9]){if(state==='play')pause();else if(state==='pause')resume()}padPrev[9]=st;
+  const pads=padList();
+  if(!pads.length){padLast=[false,false,false,false];padStart=false;return}
+  const lanes=[false,false,false,false],all=new Set();let ps=false;
+  pads.forEach(gp=>{
+    const c=padCodes(gp),m=padMap[gp.id]||padDefault(gp);
+    c.forEach(x=>all.add(x));
+    m.lanes.forEach((bs,l)=>{if(bs.some(x=>c.has(x)))lanes[l]=true});
+    if((m.pause||[]).some(x=>c.has(x)))ps=true;
+  });
+  if(!$('padpop').classList.contains('hide'))[...$('padlanes').children].forEach((el,l)=>el.classList.toggle('on',lanes[l]));
+  if(padSetup){padSetupTick(all);padLast=lanes.slice();padStart=ps;return}
+  lanes.forEach((d,l)=>{if(d&&!padLast[l]&&state==='play')press(l)});
+  if(ps&&!padStart){if(state==='play')pause();else if(state==='pause')resume()}
+  padLast=lanes;padStart=ps;
 }
 function acUnlock(){
   try{
@@ -805,7 +886,7 @@ function renderMenu(){
   else{rb.disabled=true;rb.onclick=null;rb.textContent=cs.custom&&!cs.an?'Load a song to see a recommendation':'Play a song to get a level recommendation'}
   document.documentElement.style.setProperty('--acc',SONGS[selS].acc);
 }
-function show(id){$('plpop').classList.add('hide');$('fpop').classList.add('hide');$('linkpop').classList.add('hide');if(id!=='end')$('nextbtn').hidden=true;['menu','pause','end','settings','tut','calib','mods','prof','ach','editor','replays','mp','mpjoin','mplobby','deldata'].forEach(x=>$(x).classList.toggle('hide',x!==id));if(id!=='menu')pvStop();$('pbtn').classList.toggle('hide',id!==null);$('rpbar').hidden=!(id===null&&replaying)}
+function show(id){$('plpop').classList.add('hide');$('fpop').classList.add('hide');$('linkpop').classList.add('hide');$('padpop').classList.add('hide');if(id!=='end')$('nextbtn').hidden=true;['menu','pause','end','settings','tut','calib','mods','prof','ach','editor','replays','mp','mpjoin','mplobby','deldata'].forEach(x=>$(x).classList.toggle('hide',x!==id));if(id!=='menu')pvStop();$('pbtn').classList.toggle('hide',id!==null);$('rpbar').hidden=!(id===null&&replaying)}
 
 /* ---------- chart ---------- */
 function seeded(s){return()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296}}
@@ -2836,7 +2917,13 @@ $('plren').onclick=()=>{const p=pls.find(x=>x.id===plSel);if(!p)return;const n=(
 $('plpc').onclick=()=>$('plpop').classList.add('hide');
 $('linkgo').onclick=linkImport;$('linkx').onclick=()=>$('linkpop').classList.add('hide');$('linkurl').onkeydown=e=>{if(e.key==='Enter')linkImport()};
 $('edlink').onclick=()=>{edWantImport=true;linkOpen()};
-window.addEventListener('gamepadconnected',()=>toast('Controller connected. X, A, Y and B (or the d-pad) play the four lanes. Start pauses.'));
+window.addEventListener('gamepadconnected',e=>toast('Controller connected: '+String(e.gamepad.id).slice(0,34)+'. If the buttons feel wrong, use Settings, Controller.'));
+setInterval(()=>{if(state==='play'||padSetup||!$('padpop').classList.contains('hide'))pollPad()},4);
+$('padset').onclick=()=>{padSetup=null;$('padstep').textContent='';$('padskip').hidden=true;padInfo();$('padpop').classList.remove('hide')};
+$('padstart').onclick=()=>{const ps=padList();if(!ps.length){padInfo();return}padSetup={step:0,map:{lanes:[[],[],[],[]],pause:[]},held:new Set(),id:ps[0].id};padDeb=performance.now()+500;$('padstep').textContent='Release all buttons, then press the button for '+PAD_NAMES[0];$('padskip').hidden=true};
+$('padskip').onclick=()=>{if(padSetup&&padSetup.step>=4)padFinish()};
+$('padreset').onclick=()=>{padMap={};padSetup=null;try{localStorage.setItem('fl:pad','{}')}catch(e){}$('padstep').textContent='Back to the default layout.';$('padskip').hidden=true};
+$('padx').onclick=()=>{padSetup=null;$('padpop').classList.add('hide')};
 if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
 try{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);if(ios&&navigator.standalone===false&&!localStorage.getItem('fl:a2hs')){localStorage.setItem('fl:a2hs','1');setTimeout(()=>toast('Tip: tap Share, then Add to Home Screen, to play full screen like an app.'),6000)}}catch(e){}
 $('rdata').onclick=ddOpen;$('ddback').onclick=()=>show('settings');
