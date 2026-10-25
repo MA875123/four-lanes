@@ -176,7 +176,7 @@ body.mobile #pbtn{padding:0;width:52px;height:52px;font-size:0}
   </div>
   <canvas id="c" width="400" height="600"></canvas>
   <button id="pbtn" class="hide" aria-label="Pause"><i></i><i></i></button>
-  <input type="file" id="file" accept="audio/*,video/*,.mp3,.wav,.m4a,.aac,.ogg,.oga,.opus,.flac,.weba,.wma,.aif,.aiff,.caf,.mp4,.webm,.mov,.m4v,.mkv,.ogv,.3gp,.3g2,.avi,.ts,.mts,.m2ts,.mpg,.mpeg,.wmv,.flv" hidden>
+  <input type="file" id="file" accept="audio/*,video/*,.mp3,.wav,.m4a,.aac,.ogg,.oga,.opus,.flac,.weba,.wma,.aif,.aiff,.caf,.mp4,.webm,.mov,.m4v,.mkv,.ogv,.3gp,.3g2,.avi,.ts,.mts,.m2ts,.mpg,.mpeg,.wmv,.flv,.qt,.f4v,.asf,.vob,.divx,.m4b,.mka,.mp2,.ac3" hidden>
 
   <div class="screen" id="menu">
     <div class="mh"><h1>Four Lanes</h1><p id="plabel"></p></div>
@@ -222,10 +222,11 @@ body.mobile #pbtn{padding:0;width:52px;height:52px;font-size:0}
       <div class="srow"><span>Song</span><select id="mpsong"></select></div>
       
     </div>
-    <p id="mpinfo" style="color:var(--ink);font-weight:800"></p>
+    <p id="mpinfo" style="color:var(--ink);font-weight:800;white-space:pre-line"></p>
     <div class="set"><div class="srow"><span>Your level</span><select id="mpdiff"></select></div></div>
     <div class="set" id="mpplayers"></div>
     <div class="srow" style="width:100%"><input class="nm" id="mpchat" maxlength="80" placeholder="Message" aria-label="Chat message" style="flex:1"><button class="alt chip" id="mpsend">Send</button></div>
+    <div class="row" id="mpemo"></div>
     <div id="mplog" style="width:100%;max-height:90px;overflow:auto;font-size:13px;text-align:left"></div>
     <div class="row"><button class="main" id="mpstart">Start match</button><button class="main" id="mpready">Ready</button></div>
     <p id="mpmsg" style="font-size:13px"></p>
@@ -353,7 +354,7 @@ body.mobile #pbtn{padding:0;width:52px;height:52px;font-size:0}
       <label class="srow"><span>Note speed <b id="spdv"></b></span><input type="range" id="spd" min="70" max="140" step="5"></label>
       <label class="srow"><span>Audio delay <b id="offv"></b></span><input type="range" id="off" min="-150" max="150" step="5"></label>
       <label class="srow"><span>Menu size <b id="uisv"></b></span><input type="range" id="uis" min="25" max="400" step="5"></label>
-      <div class="srow"><span></span><button class="alt chip" id="uisreset">Reset menu size to 75%</button></div>
+      <div class="srow"><span></span><button class="alt chip" id="uisreset">Reset menu size</button></div>
       <div class="srow" style="flex-direction:column;align-items:flex-start"><span>Appearance</span><span class="row" id="uithemes" style="justify-content:flex-start"></span></div>
       <div class="srow"><span>HUD style</span><button class="alt" id="hudbtn">Classic</button></div>
       <div class="srow"><span>Health bar position</span><button class="alt" id="hppbtn">Side</button></div>
@@ -401,7 +402,7 @@ body.mobile #pbtn{padding:0;width:52px;height:52px;font-size:0}
   </div>
 <div class="screen hide" id="deldata"><h2>Delete data</h2><p id="ddinfo" style="font-size:13px"></p><div class="set" id="ddlist"></div><div class="row"><button class="alt chip" id="ddall">Select all</button><button class="alt chip" id="ddnone">Clear</button><button class="alt chip" id="ddmem">Free memory now</button></div><button class="main" id="dddo">Delete selected</button><button class="alt" id="ddback">Back</button></div>
 <div class="screen hide" id="fpop"><h2>Filter songs</h2><div class="set" id="fbody"></div><div class="row"><button class="alt" id="freset">Clear filter</button><button class="main" id="fdone">Close</button></div></div>
-<div class="screen hide" id="linkpop"><h2>Add from link</h2><p style="font-size:13px;text-align:center">Paste a direct link to an audio or video file (MP3, M4A, OGG, WAV, MP4, WebM). GitHub, Dropbox and Google Drive file links are converted for you. YouTube, Spotify and SoundCloud links cannot be used.</p><input class="nm" id="linkurl" type="url" inputmode="url" placeholder="https://example.com/song.mp3" autocapitalize="off" autocorrect="off" spellcheck="false"><p id="linkmsg" style="font-size:13px;text-align:center"></p><button class="main" id="linkgo">Add song</button><button class="alt" id="linkx">Cancel</button><details style="width:100%"><summary style="text-align:center">Advanced</summary><p style="font-size:12px">Most websites stop other pages from downloading their files. When that happens the link is tried through public relay services, so those services can see the link. To avoid that, host your own relay and paste its address here. It should end in ?url=</p><input class="nm" id="linkrelay" type="url" placeholder="https://your-relay.workers.dev/?url=" autocapitalize="off" spellcheck="false"></details></div>
+<div class="screen hide" id="linkpop"><h2>Add from link</h2><p style="font-size:13px;text-align:center">Paste a direct link to an audio or video file. Share links from common file-hosting sites are converted for you. Links to streaming sites cannot be used.</p><input class="nm" id="linkurl" type="url" inputmode="url" placeholder="https://example.com/song.mp3" autocapitalize="off" autocorrect="off" spellcheck="false"><p id="linkmsg" style="font-size:13px;text-align:center"></p><button class="main" id="linkgo">Add song</button><button class="alt" id="linkx">Cancel</button><details style="width:100%"><summary style="text-align:center">Advanced</summary><p style="font-size:12px">Most websites stop other pages from downloading their files. When that happens the link is tried through public relay services, so those services can see the link. To avoid that, host your own relay and paste its address here. It should end in ?url=</p><input class="nm" id="linkrelay" type="url" placeholder="https://your-relay.example.com/?url=" autocapitalize="off" spellcheck="false"></details></div>
 <div class="screen hide" id="plpop"><h2 id="plpt"></h2><div id="plpl"></div><button class="alt" id="plpc">Close</button></div>
 </div>
 <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
@@ -496,7 +497,7 @@ async function linkImport(){
   const raw=$('linkurl').value.trim(),m=t=>{$('linkmsg').textContent=t};let u;
   try{u=new URL(raw)}catch(e){m('That does not look like a link.');return}
   if(!/^https?:$/.test(u.protocol)){m('Only http and https links work.');return}
-  if(YTRE.test(u.hostname)){m('YouTube does not allow its videos to be downloaded, and a web page cannot read them anyway. Use Add from file with a file you have the rights to use, or paste a direct link to the file.');return}
+  if(YTRE.test(u.hostname)){m('Streaming sites do not allow their videos to be downloaded, and a web page cannot read them. Use Add from file with a file you have the rights to use, or paste a direct link to the file.');return}
   const rl=$('linkrelay').value.trim();try{localStorage.setItem('fl:relay',rl)}catch(e){}
   const url=linkRewrite(u),enc=encodeURIComponent(url),tries=[['Downloading',url]];
   if(rl)tries.push(['Downloading through your relay',rl.indexOf('{url}')>=0?rl.replace('{url}',enc):rl+enc]);
@@ -559,7 +560,7 @@ async function ddRun(){
   }catch(e){}
   toast('Deleted. Reloading...');setTimeout(()=>location.reload(),900);
 }
-let acRt=0,outDead=false,frozenC=null,stall=null,wdC=-1,wdP=0,acRb=0,vsT=0,vsP=0,vsBad=false,thT=0,thPanel='#1c1838',thInk='#f3efff',oopsAt=0,oopsMsg='';
+let acRt=0,outDead=false,frozenC=null,stall=null,wdC=-1,wdP=0,acRb=0,vsT=0,vsP=0,vsBad=false,vsN=0,badVid=new Set(),thT=0,thPanel='#1c1838',thInk='#f3efff',oopsAt=0,oopsMsg='';
 try{localStorage.removeItem('fl:pad')}catch(e){}
 /* every AudioContext is made here so a replacement can be built the same way */
 function acMake(){
@@ -1319,7 +1320,7 @@ function beginNow0(){
   if(!rpData)applyLaneMods();rec={inputs:[],J:[]};rpI=0;mrate=1;cdUntil=0;if(replaying){rpSpeed=1;$('rpspd').textContent='1x';$('rpplay').textContent='Pause'}rpT0=-.3;rpBase=ac.currentTime;score=0;combo=0;maxCombo=0;counts={perfect:0,good:0,ok:0,miss:0};flash=[0,0,0,0];pops=[];
   start=ac.currentTime+.3+(replaying?0:3);scheduleMusic(cur.chart&&!cur.custom?start+LEAD:start);
   if(!replaying&&settings.cdt!==false){const so=settings.off/1000;try{[0,1,2].forEach(i=>tone(660,start+so-3.3+i,.1,'sine',.16));tone(1047,start+so-.3,.25,'sine',.2)}catch(e){}}
-  vidOn=!!(cur.custom&&cur.video&&settings.vid!==false);
+  vidOn=!!(cur.custom&&cur.video&&settings.vid!==false&&!badVid.has(cur.video));
   artOn=!!(cur.custom&&cur.artUrl&&!vidOn);{const a=$('art');a.hidden=!artOn;if(artOn&&a.getAttribute('src')!==cur.artUrl)a.src=cur.artUrl}
   {const v=$('vid');v.hidden=!vidOn;cv.classList.toggle('vid',vidOn||artOn);if(vidOn)vidSetup(v,cur.video)}
   state='play';show(null);
@@ -1336,21 +1337,38 @@ function pauseInfo(){
 }
 /* background video. Phones only let a video start from a tap and fall over if it is seeked every frame, so:
    the element is primed inside the tap that starts the song, and syncing is gentle and rate limited. */
+/* a video that cannot be played is switched off once and stays off, so nothing keeps retrying it every frame */
+/* WebM files from phones and screen recorders often have no length or seek table, which breaks syncing on phones */
+function vidFixDur(v){
+  if(isFinite(v.duration)||v.__fd)return;v.__fd=1;
+  const back=()=>{v.removeEventListener('durationchange',back);v.__fd=0;try{v.currentTime=0}catch(e){}};
+  v.addEventListener('durationchange',back);setTimeout(()=>{v.__fd=0},4000);try{v.currentTime=1e7}catch(e){}
+}
+function vidSeek(v,t){if(!(v.seekable&&v.seekable.length))return;try{v.currentTime=t}catch(e){}}
+function vidOff(quiet){
+  const v=$('vid'),u=v.getAttribute('src'),was=vidOn;
+  if(u)badVid.add(u);
+  vidOn=false;
+  try{v.pause();v.hidden=true}catch(e){}
+  cv.classList.toggle('vid',!!artOn);
+  if(was&&!quiet)toast('This video could not be played here. Playing without it.');
+}
 function vidSetup(v,url){
   try{
     v.muted=true;v.defaultMuted=true;v.playsInline=true;v.preload='auto';
     v.setAttribute('playsinline','');v.setAttribute('webkit-playsinline','');
-    if(v.getAttribute('src')!==url){v.src=url;try{v.load()}catch(e){}}
+    if(v.getAttribute('src')!==url){v.addEventListener('loadedmetadata',()=>vidFixDur(v),{once:true});v.src=url;try{v.load()}catch(e){}}
     else{try{v.pause()}catch(e){}try{if(v.currentTime>.05)v.currentTime=0}catch(e){}}
-    vsT=0;vsP=0;vsBad=false;
+    vsT=0;vsP=0;vsBad=false;vsN=0;
   }catch(e){}
 }
 function vidPrime(){
   try{
     if(settings.vid===false)return;
     const s=SONGS[selS];if(!s)return;
-    const b=(s.chart&&s.baseRef)?s.baseRef:s,url=s.video||b.video;
-    if(!url)return;
+    const b=(s.chart&&s.baseRef)?s.baseRef:s;let url=s.video||b.video;
+    if(!url&&b.lib&&b.isVideo&&b.blob){try{url=b.video=URL.createObjectURL(b.blob)}catch(e){}}
+    if(!url||badVid.has(url))return;
     const v=$('vid');vidSetup(v,url);
     const r=v.play();if(r&&r.catch)r.catch(()=>{});
   }catch(e){}
@@ -1361,31 +1379,35 @@ function vidKick(){
     const v=$('vid');
     const tt=clock()-LEAD;
     if(v.paused&&tt>=0){
-      if(v.readyState>=1&&!v.seeking&&Math.abs(v.currentTime-tt)>.15){try{v.currentTime=tt}catch(e){}}
-      const r=v.play();if(r&&r.then)r.then(()=>{vsBad=false},()=>{})
+      if(v.readyState>=1&&!v.seeking&&Math.abs(v.currentTime-tt)>.15){vidSeek(v,tt)}
+      const r=v.play();if(r&&r.then)r.then(()=>{vsBad=false;vsN=0},()=>{})
     }
   }catch(e){}
 }
 function vidSync(now){
   const v=$('vid'),T=performance.now();
+  if(v.error||(v.networkState===3&&v.getAttribute('src'))||(v.readyState>=1&&!v.videoWidth)){vidOff();return}
   if(state!=='play'){if(!v.paused)v.pause();return}
   const tt=now-LEAD;
   if(tt<0){if(!v.paused)v.pause();return}
   const rate=replaying?rpSpeed:1;
-  if(Math.abs(v.playbackRate-rate)>.001)v.playbackRate=rate;
+  if(v.paused&&Math.abs(v.playbackRate-rate)>.001)v.playbackRate=rate;
   if(isFinite(v.duration)&&v.duration>0&&tt>v.duration){if(!v.paused)v.pause();return}
   if(v.paused){
     if(T-vsP>350){
       vsP=T;
-      if(!vsBad&&v.readyState>=1&&!v.seeking&&Math.abs(v.currentTime-tt)>.15){try{v.currentTime=tt}catch(e){}}
-      const r=v.play();if(r&&r.then)r.then(()=>{vsBad=false},()=>{vsBad=true;vsP=performance.now()+1650});
+      if(!vsBad&&v.readyState>=1&&!v.seeking&&Math.abs(v.currentTime-tt)>.15){vidSeek(v,tt)}
+      const r=v.play();if(r&&r.then)r.then(()=>{vsBad=false;vsN=0},e=>{vsBad=true;vsP=performance.now()+1650;const n=e&&e.name;if(n==='NotSupportedError')vidOff();else if(n!=='NotAllowedError'&&++vsN>6)vidOff()});
     }
-  }else if(!v.seeking&&v.readyState>=2&&T-vsT>(replaying?250:1200)&&Math.abs(v.currentTime-tt)>(replaying?.3:.5)){
-    vsT=T;try{v.currentTime=tt}catch(e){}
+  }else if(!v.seeking&&v.readyState>=2){
+    /* small drift is fixed by speeding up or slowing down; seeking is a last resort because phones struggle with it */
+    const d=tt-v.currentTime,ad=Math.abs(d);
+    if(ad>(replaying?.3:.5)){if(T-vsT>(replaying?250:1200)){vsT=T;vidSeek(v,tt)}}
+    else v.playbackRate=Math.max(.1,rate*(1+(ad>.06?Math.max(-.05,Math.min(.05,d*.4)):0)));
   }
 }
 function applyVid(){
-  vidOn=!!(cur.custom&&cur.video&&settings.vid!==false);const v=$('vid');v.hidden=!vidOn;cv.classList.toggle('vid',vidOn||artOn);
+  vidOn=!!(cur.custom&&cur.video&&settings.vid!==false&&!badVid.has(cur.video));const v=$('vid');v.hidden=!vidOn;cv.classList.toggle('vid',vidOn||artOn);
   if(vidOn){try{if(v.getAttribute('src')!==cur.video)v.src=cur.video}catch(e){}}
 }
 /* pausing stops the music and freezes the game clock, and resuming starts the music again at the right spot.
@@ -1678,35 +1700,36 @@ async function libDelete(o){
   const i=SONGS.indexOf(o);if(i>=0)SONGS.splice(i,1);
   syncChartSongs();selS=0;renderMenu();toast('Song deleted.');
 }
-const isVid=f=>/^video\//.test(f.type)||/\.(mp4|mov|webm|m4v|mkv|ogv|3gp|3g2|avi|ts|mts|m2ts|mpg|mpeg|wmv|flv)$/i.test(f.name);
+const isVid=f=>/^video\//.test(f.type)||/\.(mp4|mov|webm|m4v|mkv|ogv|3gp|3g2|avi|ts|mts|m2ts|mpg|mpeg|wmv|flv|qt|f4v|asf|vob|divx)$/i.test(f.name);
 /* finds a container type this browser can actually play (MKV often plays when labelled as WebM or MP4) */
 async function probeVideo(f){
-  const ext=(f.name.split('.').pop()||'').toLowerCase(),map={mkv:['video/webm','video/mp4','video/x-matroska'],webm:['video/webm'],mov:['video/quicktime','video/mp4'],avi:['video/x-msvideo','video/mp4'],ogv:['video/ogg'],'3gp':['video/3gpp','video/mp4'],'3g2':['video/3gpp2','video/mp4'],ts:['video/mp2t','video/mp4'],mts:['video/mp2t','video/mp4'],m2ts:['video/mp2t','video/mp4'],mpg:['video/mpeg','video/mp4'],mpeg:['video/mpeg','video/mp4'],flv:['video/x-flv','video/mp4'],wmv:['video/x-ms-wmv','video/mp4']};
-  const cands=[f.type].concat(map[ext]||['video/mp4']).filter((x,i,a)=>x&&a.indexOf(x)===i);
-  for(const t of cands){
+  const ext=(f.name.split('.').pop()||'').toLowerCase(),map={mkv:['video/webm','video/mp4','video/x-matroska'],webm:['video/webm'],mov:['video/quicktime','video/mp4'],avi:['video/x-msvideo','video/mp4'],ogv:['video/ogg'],m4v:['video/x-m4v','video/mp4'],qt:['video/quicktime','video/mp4'],f4v:['video/mp4'],asf:['video/x-ms-asf','video/mp4'],vob:['video/mpeg','video/mp4'],divx:['video/x-msvideo','video/mp4'],'3gp':['video/3gpp','video/mp4'],'3g2':['video/3gpp2','video/mp4'],ts:['video/mp2t','video/mp4'],mts:['video/mp2t','video/mp4'],m2ts:['video/mp2t','video/mp4'],mpg:['video/mpeg','video/mp4'],mpeg:['video/mpeg','video/mp4'],flv:['video/x-flv','video/mp4'],wmv:['video/x-ms-wmv','video/mp4']};
+  const cands=[f.type].concat(map[ext]||['video/mp4'],['video/mp4','video/webm','video/quicktime']).filter((x,i,a)=>x&&a.indexOf(x)===i);
+  for(const [ci,t] of cands.entries()){
     const b=f.type===t?f:new Blob([f],{type:t}),u=URL.createObjectURL(b),v=document.createElement('video');
-    const ok=await new Promise(res=>{const T=setTimeout(()=>res(false),7000);v.muted=true;v.playsInline=true;v.preload='metadata';v.onloadedmetadata=()=>{clearTimeout(T);res(v.videoWidth>0&&v.duration>0)};v.onerror=()=>{clearTimeout(T);res(false)};v.src=u});
-    v.removeAttribute('src');v.load();URL.revokeObjectURL(u);
+    const ok=await new Promise(res=>{const T=setTimeout(()=>res(false),ci?3000:6000);v.muted=true;v.playsInline=true;v.setAttribute('playsinline','');v.preload='metadata';v.style.cssText='position:fixed;left:-9999px;top:0;width:2px;height:2px;opacity:0;pointer-events:none';document.body.appendChild(v);v.onloadedmetadata=()=>{clearTimeout(T);res(v.videoWidth>0&&v.duration>0)};v.onerror=()=>{clearTimeout(T);res(false)};v.src=u});
+    v.removeAttribute('src');v.load();v.remove();URL.revokeObjectURL(u);
     if(ok)return b;
   }
   return null;
 }
 /* last resort for codecs decodeAudioData cannot read: play the file and record its audio (takes as long as the song) */
 async function extractAudio(b,onp){
-  const v=document.createElement('video'),u=URL.createObjectURL(b);v.playsInline=true;v.preload='auto';v.src=u;
+  const v=document.createElement('video'),u=URL.createObjectURL(b);let mrx=null;v.playsInline=true;v.setAttribute('playsinline','');v.preload='auto';v.style.cssText='position:fixed;left:-9999px;top:0;width:2px;height:2px;opacity:0;pointer-events:none';document.body.appendChild(v);v.src=u;
   try{
     await new Promise((res,rej)=>{v.onloadedmetadata=res;v.onerror=()=>rej(new Error('media'));setTimeout(()=>rej(new Error('timeout')),10000)});
+    if(!isFinite(v.duration)){await new Promise(r=>{const d=()=>{v.removeEventListener('durationchange',d);r()};v.addEventListener('durationchange',d);setTimeout(d,4000);try{v.currentTime=1e7}catch(e){r()}});try{v.currentTime=0}catch(e){}}
     if(!isFinite(v.duration)||v.duration>2400)throw new Error('long');
     const src=ac.createMediaElementSource(v),dst=ac.createMediaStreamDestination();src.connect(dst);
-    const mt=['audio/webm;codecs=opus','audio/webm','audio/mp4'].find(t=>MediaRecorder.isTypeSupported(t)),mr=new MediaRecorder(dst.stream,mt?{mimeType:mt}:undefined),ch=[];
+    const mt=['audio/webm;codecs=opus','audio/webm','audio/mp4'].find(t=>MediaRecorder.isTypeSupported(t)),mr=mrx=new MediaRecorder(dst.stream,mt?{mimeType:mt}:undefined),ch=[];
     mr.ondataavailable=e=>{if(e.data&&e.data.size)ch.push(e.data)};
     const stopped=new Promise(r=>{mr.onstop=r});
     if(ac.state!=='running')await Promise.race([ac.resume(),sleep(600)]);
     mr.start(1000);await v.play();
-    await new Promise((res,rej)=>{const t=setInterval(()=>{if(onp)onp(Math.min(1,v.currentTime/v.duration))},400);v.onended=()=>{clearInterval(t);res()};v.onerror=()=>{clearInterval(t);rej(new Error('media'))}});
+    await new Promise((res,rej)=>{let lt=-1,ls=performance.now();const t=setInterval(()=>{const c=v.currentTime;if(c!==lt){lt=c;ls=performance.now()}else{if(v.paused&&!v.ended)v.play().catch(()=>{});if(performance.now()-ls>20000){clearInterval(t);rej(new Error('stalled'))}}if(onp)onp(Math.min(1,c/v.duration))},400);v.onended=()=>{clearInterval(t);res()};v.onerror=()=>{clearInterval(t);rej(new Error('media'))}});
     mr.stop();await stopped;
     return new Blob(ch,{type:mr.mimeType||mt||'audio/webm'});
-  }finally{try{v.pause();v.removeAttribute('src');v.load()}catch(e){}URL.revokeObjectURL(u)}
+  }finally{try{if(mrx&&mrx.state!=='inactive')mrx.stop()}catch(e){}try{v.pause();v.removeAttribute('src');v.load();v.remove()}catch(e){}URL.revokeObjectURL(u)}
 }
 async function importFile(f){
   const ph=SONGS[SONGS.length-1];if(ph.busy)return;
@@ -1714,7 +1737,7 @@ async function importFile(f){
   try{
     if(!ac)ac=new (window.AudioContext||window.webkitAudioContext)();
     let vb=null,buf=null,aud=null,tag={};const v=isVid(f);
-    if(v){ph.sub='Checking the video...';renderMenu();vb=await probeVideo(f);if(!vb){/* the check can fail on phones even for playable files, so keep the video; if it really cannot play, the game says so and plays without it */vb=(f.type&&/^video\//.test(f.type))?f:new Blob([f],{type:'video/mp4'});toast('Could not confirm this device can play that video. It is kept anyway; if it does not show, the song plays without it.')}}
+    if(v){ph.sub='Checking the video...';renderMenu();vb=await probeVideo(f);if(!vb){/* the check can fail on phones even for playable files, so keep the video; if it really cannot play, the game says so and plays without it */vb=(f.type&&/^video\//.test(f.type))?f:new Blob([f],{type:'video/mp4'});toast(/webm/i.test(f.type+f.name)&&!document.createElement('video').canPlayType('video/webm')?'This browser cannot play WebM video, so the song is added but the video may not show. Converting the file to MP4 fixes this.':'This device could not confirm it can play that video. The song is still added, and plays without the video if it will not show.')}}
     if(f.size<=150e6){try{const ab=await f.arrayBuffer();tag=readTags(ab)||{};buf=await ac.decodeAudioData(ab)}catch(e){buf=null}}
     if(!buf){
       const src=vb||(v?null:f);if(!src||!window.MediaRecorder)throw new Error('nodec');
@@ -1734,7 +1757,7 @@ async function importFile(f){
     toast(saved?'Song imported and saved.':'Imported, but this browser would not save it for next time.');
     ach('imp');
     if(edWantImport){edWantImport=false;edAfterImport(o)}
-  }catch(err){toast('Could not read that file. Try MP3, WAV, M4A, OGG, FLAC, MP4, MOV, WebM or MKV.')}
+  }catch(err){toast('Could not read that file. Try a common audio or video format, such as MP3, WAV, M4A, MP4 or WebM.')}
   ph.sub='Choose an audio or video file from your device';ph.busy=false;renderMenu();
 }
 $('file').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)importFile(f)};
@@ -2075,7 +2098,7 @@ function mpPeers(){
   ps.forEach(p=>{
     if(p.isMe)return;const c=p.presence&&p.presence.ch,i=c?mcl(c.i,0,1e15):0;
     if(mp.seen[p.peer]===undefined){mp.seen[p.peer]=i;return}
-    if(c&&i>mp.seen[p.peer]){mp.seen[p.peer]=i;mpLog(mst(p.presence.n,16)||'Player',mst(c.t,80))}
+    if(c&&i>mp.seen[p.peer]){mp.seen[p.peer]=i;mpLog(mst(p.presence.n,16)||'Player',mst(c.t,80));(mp.emo=mp.emo||{})[p.peer]={n:mst(p.presence.n,10)||'Player',t:mst(c.t,24),at:performance.now()}}
   });
   mpAdvertise();
   if(!$('mplobby').classList.contains('hide'))mpRenderLobby();
@@ -2098,7 +2121,8 @@ function mpRenderLobby(){
   $('mppubbtn').setAttribute('aria-pressed',mp.pub);$('mpprivbtn').setAttribute('aria-pressed',!mp.pub);
   $('mpcoderow').hidden=!mp.host;$('mpcodebox').value=mp.code;
   const sn=hpr.song==='mpx'?(mst(hpr.sn,40)||'Custom song'):(SONGS.find(x=>x.id===hpr.song)||{name:'?'}).name,dn=(DIFFS.find(x=>x.id===hpr.diff)||{name:'?'}).name;
-  $('mpinfo').textContent=sn+(mp.host?'':(mp.pub?' | Public lobby':' | Private lobby'));
+  const sd=Object.entries(mp.pts||{}).filter(([k])=>ps.some(p=>p.peer===k)).map(x=>x[1]).sort((a,b)=>b.v-a.v);
+  $('mpinfo').textContent=sn+(mp.host?'':(mp.pub?' | Public lobby':' | Private lobby'))+(mp.rounds&&sd.length?'\nStandings after '+mp.rounds+' round'+(mp.rounds>1?'s':'')+': '+sd.map(x=>x.n+' '+x.v).join(', '):'');
   const box=$('mpplayers');box.innerHTML='';
   ps.forEach(p=>{
     const pr=p.presence||{},row=document.createElement('div');row.className='rrow';
@@ -2249,17 +2273,34 @@ function mpRanked(){
 }
 function drawMpBoard(){
   if(!mp||!mp.playing||state==='end')return;
-  const ps=mpRanked().slice(0,6);
+  const rk=mpRanked(),ps=rk.slice(0,6),T=performance.now();
   g.save();g.font='700 12px system-ui,sans-serif';g.textAlign='left';
   ps.forEach((p,i)=>{const pr=p.presence,y=96+i*16;g.globalAlpha=p.isMe?1:.8;g.fillStyle=p.isMe?COL[2]:INK;g.fillText((i+1)+' '+mst(pr.n,10)+(pr.pz?' (paused)':''),14,y);g.fillText(String(mcl(pr.sc,0,1e9)),140,y)});
+  let y=96+ps.length*16+6;
+  const mi=rk.findIndex(p=>p.isMe);
+  if(mi>=0&&rk.length>1){
+    const sc=x=>mcl(x.presence.sc,0,1e9),me=sc(rk[mi]);
+    if(T-(mp.lrAt||0)>3000)mp.lr=undefined;mp.lrAt=T;
+    if(mp.lr!==undefined&&mi<mp.lr&&T-(mp.nt||0)>1500){mp.nt=T;const o=rk[mi+1];mp.nm=mi===0?'You took the lead!':'Passed '+(o&&mst(o.presence.n,12)||'a player')+'!'}
+    mp.lr=mi;g.globalAlpha=.9;g.fillStyle=COL[1];
+    g.fillText(mi>0?'Chasing '+(mst(rk[mi-1].presence.n,10)||'player')+': '+Math.max(0,sc(rk[mi-1])-me)+' behind':'Leading by '+Math.max(0,me-sc(rk[1])),14,y);y+=16;
+  }
+  if(mp.emo)for(const k in mp.emo){const e=mp.emo[k],a=T-e.at;if(a>5000){delete mp.emo[k];continue}g.globalAlpha=Math.min(1,(5000-a)/1000);g.fillStyle=INK;g.fillText(e.n+': '+e.t,14,y);y+=16}
+  if(mp.nm&&T-(mp.nt||0)<2200){const a=T-mp.nt;g.globalAlpha=Math.max(0,1-a/2200);g.textAlign='center';g.font='800 22px system-ui,sans-serif';g.fillStyle=COL[1];g.fillText(mp.nm,W/2,H*.3-a*.02)}
   g.restore();
+}
+/* result awards: top combo and best accuracy among players who finished */
+function awd(pr,dn,bc,ba){
+  if(pr.st!=='done'||pr.fl||dn.length<2)return '';
+  return (mcl(pr.cb,0,1e6)===bc&&bc>0?' | Top combo '+bc:'')+(mcl(pr.ac,0,100)===ba&&ba>0?' | Most accurate':'');
 }
 function mpResultsRender(){
   if(!mp)return;const box=$('mpres');if(box.hidden)return;box.innerHTML='';
-  mpRanked().forEach((p,i)=>{
+  const rk=mpRanked(),dn=rk.filter(p=>p.presence.st==='done'&&!p.presence.fl),bc=Math.max(0,...dn.map(p=>mcl(p.presence.cb,0,1e6))),ba=Math.max(0,...dn.map(p=>mcl(p.presence.ac,0,100)));
+  rk.forEach((p,i)=>{
     const pr=p.presence,row=document.createElement('div');row.className='rrow';
     const t=document.createElement('span');
-    t.textContent=ord(i+1)+' | '+(mst(pr.bd,2)?mst(pr.bd,2)+' ':'')+mst(pr.n,16)+(p.isMe?' (you)':'')+' ['+((DIFFS.find(x=>x.id===(pr.df||pr.diff))||{}).name||'?')+'] | '+mcl(pr.sc,0,1e9)+(pr.st==='done'?' | '+mcl(pr.ac,0,100).toFixed(1)+'% '+mst(pr.gr,3):' | playing '+mcl(pr.pg,0,100)+'%');
+    t.textContent=ord(i+1)+' | '+(mst(pr.bd,2)?mst(pr.bd,2)+' ':'')+mst(pr.n,16)+(p.isMe?' (you)':'')+' ['+((DIFFS.find(x=>x.id===(pr.df||pr.diff))||{}).name||'?')+'] | '+mcl(pr.sc,0,1e9)+(pr.st==='done'?' | '+mcl(pr.ac,0,100).toFixed(1)+'% '+mst(pr.gr,3):' | playing '+mcl(pr.pg,0,100)+'%')+awd(pr,dn,bc,ba);
     row.appendChild(t);box.appendChild(row);
   });
 }
@@ -2281,6 +2322,8 @@ function mpFinalize(){
   mp.rewarded=true;
   const rk=mpRanked(),n=rk.length,pos=rk.findIndex(p=>p.isMe)+1;
   if(n<2||!pos)return;
+  mp.pts=mp.pts||{};mp.rounds=(mp.rounds||0)+1;
+  rk.forEach((p,i)=>{if(p.presence.fl)return;mp.pts[p.peer]={n:mst(p.presence.n,12)||'Player',v:((mp.pts[p.peer]||{}).v||0)+Math.max(1,n-i)}});
   const bonus=pos===1?60:pos===2?30:pos===3?15:10,before=lvlOf(prof.xp);
   prof.xp+=bonus;saveProf();
   ach('mp1');if(pos===1)ach('mpw');
@@ -2387,6 +2430,7 @@ $('mpsend').onclick=()=>{
   mpSet({ch:{i:mp.ci,t:txt}});mpLog(mst(prof.name,16)+' (you)',txt);$('mpchat').value='';
 };
 $('mpchat').onkeydown=e=>{if(e.key==='Enter')$('mpsend').onclick()};
+['GG','Nice one!','So close!','Rematch?','On fire!'].forEach(t=>{const b=document.createElement('button');b.className='alt chip';b.textContent=t;b.onclick=()=>{$('mpchat').value=t;$('mpsend').onclick()};$('mpemo').appendChild(b)});
 $('mpleave').onclick=()=>mpLeave('');
 $('mpbackbtn').onclick=mpToLobby;
 function jr(t,pts){if(!replaying&&rec)rec.J.push([+t.toFixed(2),pts,score])}
@@ -2722,8 +2766,8 @@ async function edPlay(rec){
     }
   }
   if(edHitOn)ed.notes.forEach(([bt,l])=>{if(bt<from-1e-6)return;const f=bs.lib?262*Math.pow(2,[0,3,7,10][l]/12):bs.root*Math.pow(2,bs.scale[bs.lane[l]]/12);tone(f,tw+(bt-from)*sc,.22,bs.lib?'triangle':bs.lead,bs.lib?.2:Math.max(.16,(bs.lv||.14)*1.3))});
-  const v=$('edvid'),useV=!!(bs.lib&&bs.isVideo&&bs.video&&settings.vid!==false);
-  if(useV){if(v.getAttribute('src')!==bs.video)v.src=bs.video;v.hidden=false;v.playbackRate=rate;try{v.currentTime=Math.max(0,off+from*T)}catch(e){}setTimeout(()=>{if(edPrev)v.play().catch(()=>{})},Math.max(0,(tw-ac.currentTime)*1000))}else v.hidden=true;
+  const v=$('edvid'),useV=!!(bs.lib&&bs.isVideo&&bs.video&&settings.vid!==false&&!badVid.has(bs.video));
+  if(useV){if(v.getAttribute('src')!==bs.video)v.src=bs.video;v.hidden=false;v.playbackRate=rate;try{v.currentTime=Math.max(0,off+from*T)}catch(e){}setTimeout(()=>{if(edPrev)v.play().catch(e=>{if(e&&e.name==='NotSupportedError'){badVid.add(bs.video);v.hidden=true}})},Math.max(0,(tw-ac.currentTime)*1000))}else v.hidden=true;
   if(rec)edSnapState();
   edPrev={raf:0,rec:!!rec,tw,from,sc,T,vs:0,cb:from};
   $('edplay').textContent='Stop';$('edrec').setAttribute('aria-pressed',!!rec);
@@ -3107,7 +3151,9 @@ $('ddnone').onclick=()=>{ddSel.clear();ddRender()};
 $('ddmem').onclick=()=>{freeMem(true);toast('Memory freed.')};
 $('dddo').onclick=()=>{if(!ddSel.size){toast('Pick something to delete first.');return}if(!ddArm){ddArm=1;$('dddo').textContent='Tap again to delete '+ddSel.size+' item'+(ddSel.size>1?'s':'')+' for good';setTimeout(()=>{ddArm=0;$('dddo').textContent='Delete selected'},4000);return}ddArm=0;ddRun()};
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='menu')freeMem(false)});
-$('vid').onerror=()=>{if(vidOn&&$('vid').getAttribute('src')){vidOn=false;$('vid').hidden=true;cv.classList.remove('vid');toast('This video could not be played here. Playing without it.')}};
+$('vid').onerror=()=>{const u=$('vid').getAttribute('src');if(!u)return;badVid.add(u);if(vidOn)vidOff()};
+$('edvid').onerror=()=>{const u=$('edvid').getAttribute('src');if(u){badVid.add(u);$('edvid').hidden=true}};
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='play'&&!replaying&&!(mp&&mp.playing))pause()});
 ['pointerdown','touchend','keydown','click'].forEach(t=>document.addEventListener(t,acUnlock,{capture:true,passive:true}));
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&ac&&!(replaying&&state==='pause')&&ac.state!=='running')ac.resume().catch(()=>{})});
 ['touchstart','touchmove','touchend'].forEach(t=>cv.addEventListener(t,e=>e.preventDefault(),{passive:false}));
