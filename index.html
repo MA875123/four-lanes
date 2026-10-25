@@ -57,6 +57,7 @@ body.mobile button.main{padding:14px 36px}
 body.mobile .opt{padding:10px 12px}
 canvas{-webkit-touch-callout:none}
 [hidden]{display:none!important}
+#vid,.edwrap video{transition:opacity .35s}
 #vid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:14px;background:#000;pointer-events:none}
 body.mobile #vid{border-radius:0}
 #art{position:absolute;inset:-3%;width:106%;height:106%;object-fit:cover;filter:blur(4px);border-radius:14px;pointer-events:none}
@@ -380,6 +381,8 @@ select:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
       <div class="srow"><span>Measure audio delay</span><button class="alt" id="calbtn">Calibrate</button></div>
       <div class="srow"><span>Song preview on select</span><button class="alt" id="prvbtn">On</button></div>
       <div class="srow"><span>Background video</span><button class="alt" id="vdbtn">On</button></div>
+      <div class="srow"><span>Video framing</span><button class="alt" id="vfbtn">Fill</button></div>
+      <label class="srow"><span>Video delay <b id="vofv"></b></span><input type="range" id="vofs" min="-300" max="300" step="10"></label>
       <div class="srow"><span>Vibration</span><button class="alt" id="hapbtn">On</button></div>
       <div class="srow"><span>Countdown sounds</span><button class="alt" id="cdbtn">On</button></div>
       <div class="srow"><span>Hit text</span><button class="alt" id="popbtn">On</button></div>
@@ -531,7 +534,7 @@ async function linkImport(){
   $('linkpop').classList.add('hide');
   importFile(new File([got.blob],nm+ext,{type:ct&&ct!=='application/octet-stream'?ct:got.blob.type}));
 }
-function vidRelease(){try{const v=$('vid');v.pause();v.removeAttribute('src');v.load()}catch(e){}}
+function vidRelease(){try{MV.release()}catch(e){const v=$('vid');try{v.pause();v.removeAttribute('src');v.load()}catch(x){}}}
 function freeMem(all){
   const keep=all?null:SONGS[selS];
   SONGS.forEach(x=>{if(x.lib&&x!==keep&&!x.loading&&(x.buf||x.an)){x.buf=null;x.an=null}});
@@ -1352,35 +1355,63 @@ function pauseInfo(){
   $('ptcur').textContent=fmtClock(t);$('pttot').textContent=fmtClock(endT);
   $('psc').textContent=score.toLocaleString();$('pcb').textContent=combo;$('pac').textContent=(pa*100).toFixed(j?1:0)+'%';
 }
-/* background video. Phones only let a video start from a tap and fall over if it is seeked every frame, so:
-   the element is primed inside the tap that starts the song, and syncing is gentle and rate limited. */
-/* a video that cannot be played is switched off once and stays off, so nothing keeps retrying it every frame */
-/* WebM files from phones and screen recorders often have no length or seek table, which breaks syncing on phones */
-function vidFixDur(v){
-  if(isFinite(v.duration)||v.__fd||v.currentTime>2)return;v.__fd=1;
-  const clr=()=>{v.removeEventListener('durationchange',done);clearTimeout(v.__ft);v.__fd=0},done=()=>{clr();try{v.currentTime=v.__t||0}catch(e){}};
-  v.addEventListener('durationchange',done);v.__ft=setTimeout(clr,4000);
-  try{v.currentTime=1e7}catch(e){clr()}
-}
-function edVidAt(v,t){v.__t=t;const go=()=>{if(v.seekable&&v.seekable.length)try{v.currentTime=t}catch(e){}};if(v.readyState>=1)go();else v.addEventListener('loadedmetadata',go,{once:true})}
-function vidSeek(v,t){if(!(v.seekable&&v.seekable.length))return;try{v.currentTime=t}catch(e){}}
-function vidOff(quiet){
-  const v=$('vid'),u=v.getAttribute('src'),was=vidOn;
-  if(u)badVid.add(u);
-  vidOn=false;
-  try{v.pause();v.hidden=true;v.removeAttribute('src');v.load()}catch(e){}
-  cv.classList.toggle('vid',!!artOn);
-  if(was&&!quiet)toast('This video could not be played here. Playing without it.');
-}
-function vidSetup(v,url){
-  try{
-    v.muted=true;v.defaultMuted=true;v.playsInline=true;v.preload='auto';
-    v.setAttribute('playsinline','');v.setAttribute('webkit-playsinline','');
+/* ---------- music video ----------
+   One controller (VidSync) keeps a muted <video> locked to a clock the game supplies. It drives both the game
+   background and the chart editor. The game clock is the master: the video is nudged with tiny speed changes and
+   only seeks when it is far off, because phones struggle with frequent seeks. Where the browser can report which
+   frame is really on screen (requestVideoFrameCallback) that is used to measure drift, not currentTime. */
+class VidSync{
+  constructor(el,o){this.v=el;this.o=o||{};this.url=null;this.on=false;this.vf=0;this.reset();
+    el.addEventListener('loadedmetadata',()=>this.fixDur());
+    el.addEventListener('error',()=>{if(this.on&&this.url)this.fail()});
+    el.addEventListener('playing',()=>{this.err=0;this.noGest=false});
+  }
+  reset(){this.err=0;this.noGest=false;this.pAt=0;this.sAt=0;this.rAt=0;this.wait=0;this.shown=0;this.mt=null;this.mtAt=0;this.v.style.opacity=0}
+  load(url){
+    const v=this.v;this.url=url;this.on=true;this.reset();
+    v.muted=v.defaultMuted=true;v.playsInline=true;v.preload='auto';v.setAttribute('playsinline','');v.setAttribute('webkit-playsinline','');
     if(v.getAttribute('src')!==url){v.src=url;try{v.load()}catch(e){}}
-    else{try{v.pause()}catch(e){}try{if(v.currentTime>.05){if(v.seekable&&v.seekable.length)v.currentTime=0;else v.load()}}catch(e){}}
-    v.__t=0;vsT=0;vsP=0;vsBad=false;vsN=0;
-  }catch(e){}
+    else{try{v.pause();if(v.currentTime>.05&&!this.seek(0))v.load()}catch(e){}}
+    v.playbackRate=1;v.hidden=false;this.watch();
+  }
+  watch(){const v=this.v;if(this.vf||!v.requestVideoFrameCallback)return;const cb=(n,m)=>{this.mt=m.mediaTime;this.mtAt=m.expectedDisplayTime||n;this.vf=v.requestVideoFrameCallback(cb)};this.vf=v.requestVideoFrameCallback(cb)}
+  pos(){const v=this.v,T=performance.now();return this.mt!=null&&!v.paused&&T-this.mtAt<250?this.mt+(T-this.mtAt)/1000*v.playbackRate:v.currentTime}
+  seek(t){const v=this.v;if(!(v.seekable&&v.seekable.length))return false;try{v.currentTime=Math.max(0,t);return true}catch(e){return false}}
+  park(t){const go=()=>this.seek(t);if(this.v.readyState>=1)go();else this.v.addEventListener('loadedmetadata',go,{once:true})}
+  /* WebM from phones and screen recorders often has no length; asking for a far time makes the browser find it */
+  fixDur(){const v=this.v;if(isFinite(v.duration)||v.__fd||v.currentTime>2)return;v.__fd=1;const end=()=>{v.removeEventListener('durationchange',done);clearTimeout(v.__ft);v.__fd=0},done=()=>{end();this.seek(0)};v.addEventListener('durationchange',done);v.__ft=setTimeout(end,4000);try{v.currentTime=1e7}catch(e){end()}}
+  play(){try{const r=this.v.play();if(r&&r.then)r.then(()=>{this.err=0;this.noGest=false},e=>{const n=e&&e.name;if(n==='AbortError')return;if(n==='NotAllowedError')this.noGest=true;else if(n==='NotSupportedError')this.fail();else if(++this.err>6)this.fail();else this.pAt=performance.now()+1500})}catch(e){}}
+  /* called from a tap or key press: browsers only let a video start from a gesture, so retry right now */
+  kick(tt){const v=this.v;if(!this.on||!v.paused||tt<0)return;this.noGest=false;if(v.readyState>=1&&!v.seeking&&Math.abs(v.currentTime-tt)>.15)this.seek(tt);this.play()}
+  /* tt: where the video should be (seconds); run: false holds it; rate: playback speed */
+  update(tt,run,rate){
+    if(!this.on)return;const v=this.v,T=performance.now();rate=rate||1;
+    if(v.error)return this.fail();
+    if(v.readyState>=1&&!v.videoWidth)return this.fail(true);
+    if(v.readyState===0){if(!this.wait)this.wait=T;else if(T-this.wait>15000)return this.fail()}else this.wait=0;
+    if(!this.shown&&v.readyState>=2){this.shown=1;v.style.opacity=this.o.alpha||1}
+    if(!run||tt<-.2){if(!v.paused)v.pause();if(run&&v.readyState>=1&&v.currentTime>.1&&!v.seeking)this.seek(0);return}
+    if(isFinite(v.duration)&&v.duration>0&&tt>v.duration){if(!v.paused)v.pause();return}
+    if(v.paused){
+      if(Math.abs(v.playbackRate-rate)>.001)v.playbackRate=rate;
+      if(T>this.pAt){this.pAt=T+(this.noGest?1000:350);if(tt>0&&v.readyState>=1&&!v.seeking&&Math.abs(v.currentTime-tt)>.15)this.seek(tt);this.play()}
+      return;
+    }
+    if(v.seeking||v.readyState<2||tt<0)return;
+    const d=tt-this.pos(),ad=Math.abs(d),can=v.seekable&&v.seekable.length;
+    if(ad>(this.o.hard||.5)&&can){if(T-this.sAt>(this.o.gap||1200)){this.sAt=T;this.seek(tt)}return}
+    if(T-this.rAt>150){this.rAt=T;const lim=can?.06:.25,tr=Math.round(rate*(1+(ad>.04?Math.max(-lim,Math.min(lim,d*.5)):0))*100)/100;if(Math.abs(v.playbackRate-tr)>.004)v.playbackRate=tr}
+  }
+  release(){const v=this.v;this.on=false;if(this.vf&&v.cancelVideoFrameCallback)try{v.cancelVideoFrameCallback(this.vf)}catch(e){}this.vf=0;try{v.pause();v.hidden=true;v.removeAttribute('src');v.load()}catch(e){}this.url=null;this.mt=null}
+  /* a video that cannot be played is switched off once and stays off, so nothing retries it every frame */
+  fail(quiet){const u=this.url,was=this.on;if(u)badVid.add(u);this.release();if(this.o.onFail)this.o.onFail(was&&!quiet)}
 }
+const MV=new VidSync($('vid'),{onFail:q=>{vidOn=false;cv.classList.toggle('vid',!!artOn);if(q)toast('This video could not be played here. Playing without it.')}});
+const EV=new VidSync($('edvid'),{alpha:.5,hard:.35,gap:700});
+const vidTarget=t=>t-LEAD+(settings.vofs||0)/1000;
+function applyVidFit(){const f=settings.vfit?'contain':'cover';$('vid').style.objectFit=f;$('edvid').style.objectFit=f}
+function vidSetup(v,url){MV.load(url)}
+function vidOff(quiet){MV.fail(quiet)}
 function vidPrime(){
   try{
     if(settings.vid===false)return;
@@ -1388,48 +1419,11 @@ function vidPrime(){
     const b=(s.chart&&s.baseRef)?s.baseRef:s;let url=s.video||b.video;
     if(!url&&b.lib&&b.isVideo&&b.blob){try{url=b.video=URL.createObjectURL(b.blob)}catch(e){}}
     if(!url||badVid.has(url))return;
-    const v=$('vid');vidSetup(v,url);
-    const r=v.play();if(r&&r.catch)r.catch(()=>{});
+    MV.load(url);MV.play();
   }catch(e){}
 }
-function vidKick(){
-  try{
-    if(!vidOn||state!=='play'||replaying&&rpSpeed<=0)return;
-    const v=$('vid');
-    const tt=clock()-LEAD;
-    if(v.paused&&tt>=0){
-      if(v.readyState>=1&&!v.seeking&&Math.abs(v.currentTime-tt)>.15){vidSeek(v,tt)}
-      const r=v.play();if(r&&r.then)r.then(()=>{vsBad=false;vsN=0},()=>{})
-    }
-  }catch(e){}
-}
-function vidSync(now){
-  const v=$('vid'),T=performance.now();
-  if(v.error){vidOff();return}
-  if(v.readyState>=1&&!v.videoWidth){vidOff(true);return}
-  if(state!=='play'){if(!v.paused)v.pause();return}
-  const tt=now-LEAD;
-  if(tt<0){if(!v.paused)v.pause();return}
-  if(v.readyState===0&&!vsBad){if(!v.__w)v.__w=T;else if(T-v.__w>15000){vidOff();return}}else v.__w=0;
-  const rate=replaying?rpSpeed:1;
-  if(v.paused&&Math.abs(v.playbackRate-rate)>.001)v.playbackRate=rate;
-  if(isFinite(v.duration)&&v.duration>0&&tt>v.duration){if(!v.paused)v.pause();return}
-  if(v.paused){
-    if(T-vsP>350){
-      vsP=T;
-      if(!vsBad&&v.readyState>=1&&!v.seeking&&Math.abs(v.currentTime-tt)>.15){vidSeek(v,tt)}
-      const r=v.play();if(r&&r.then)r.then(()=>{vsBad=false;vsN=0},e=>{vsBad=true;vsP=performance.now()+1650;const n=e&&e.name;if(n==='NotSupportedError')vidOff();else if(n!=='NotAllowedError'&&++vsN>6)vidOff()});
-    }
-  }else if(!v.seeking&&v.readyState>=2){
-    /* small drift is fixed by speeding up or slowing down; seeking is a last resort because phones struggle with it */
-    const d=tt-v.currentTime,ad=Math.abs(d);
-    if(ad>(replaying?.3:.5)&&v.seekable&&v.seekable.length){if(T-vsT>(replaying?250:1200)){vsT=T;vidSeek(v,tt)}}
-    else if(T-(v.__rt||0)>200){
-      v.__rt=T;const lim=v.seekable&&v.seekable.length?.05:.25,tr=Math.round(Math.max(.1,rate*(1+(ad>.06?Math.max(-lim,Math.min(lim,d*.4)):0)))*100)/100;
-      if(Math.abs(v.playbackRate-tr)>.004)v.playbackRate=tr;
-    }
-  }
-}
+function vidKick(){try{if(vidOn&&state==='play'&&!(replaying&&rpSpeed<=0))MV.kick(vidTarget(clock()))}catch(e){}}
+function vidSync(now){MV.o.hard=replaying?.3:.5;MV.o.gap=replaying?250:1200;MV.update(vidTarget(now),state==='play',replaying?rpSpeed:1)}
 function applyVid(){
   if(!cur||(state!=='play'&&state!=='pause'))return;
   const v=$('vid'),want=!!(cur.custom&&cur.video&&settings.vid!==false&&!badVid.has(cur.video));
@@ -2636,7 +2630,7 @@ function syncSettings(){
   $('vol').value=Math.round(settings.vol*100);$('volv').textContent=Math.round(settings.vol*100)+'%';
   $('spd').value=Math.round(settings.spd*100);$('spdv').textContent=settings.spd.toFixed(2)+'x';
   $('off').value=settings.off;$('offv').textContent=(settings.off>0?'+':'')+settings.off+' ms';
-  $('uis').value=settings.ui||75;$('uisv').textContent=(settings.ui||75)+'%';$('vdim').value=Math.round(settings.vdim*100);$('vdv').textContent=Math.round(settings.vdim*100)+'%';renderThemes();renderExtra();
+  $('uis').value=settings.ui||75;$('uisv').textContent=(settings.ui||75)+'%';$('vdim').value=Math.round(settings.vdim*100);$('vdv').textContent=Math.round(settings.vdim*100)+'%';$('vofs').value=settings.vofs||0;$('vofv').textContent=((settings.vofs||0)>0?'+':'')+(settings.vofs||0)+' ms';$('vfbtn').textContent=settings.vfit?'Fit':'Fill';applyVidFit();renderThemes();renderExtra();
   [['popbtn','pops'],['flbtn','flash'],['prvbtn','prev'],['vdbtn','vid'],['cdbtn','cdt'],['hapbtn','hap']].forEach(([id,k])=>{const b=$(id);b.textContent=settings[k]?'On':'Off';b.setAttribute('aria-pressed',settings[k])});
   renderKeys();
 }
@@ -2655,6 +2649,7 @@ function renderThemes(){
     b.onclick=()=>{applyTheme(i);saveSettings();renderThemes();if(i!==0)ach('thm')};t.appendChild(b)});
 }
 applyTheme(settings.theme||0);
+$('vofs').oninput=e=>{settings.vofs=+e.target.value;saveSettings();syncSettings()};$('vfbtn').onclick=()=>{settings.vfit=!settings.vfit;saveSettings();syncSettings()};
 $('vdim').oninput=e=>{settings.vdim=e.target.value/100;saveSettings();syncSettings()};
 function applyUi(){document.documentElement.style.setProperty('--ui',(settings.ui||75)/100)}
 $('uis').oninput=e=>{settings.ui=+e.target.value;saveSettings();applyUi();syncSettings()};
@@ -2807,8 +2802,8 @@ async function edPlay(rec){
     }
   }
   if(edHitOn)ed.notes.forEach(([bt,l])=>{if(bt<from-1e-6)return;const f=bs.lib?262*Math.pow(2,[0,3,7,10][l]/12):bs.root*Math.pow(2,bs.scale[bs.lane[l]]/12);tone(f,tw+(bt-from)*sc,.22,bs.lib?'triangle':bs.lead,bs.lib?.2:Math.max(.16,(bs.lv||.14)*1.3))});
-  const v=$('edvid'),useV=!!(bs.lib&&bs.isVideo&&bs.video&&settings.vid!==false&&!badVid.has(bs.video));
-  if(useV){if(v.getAttribute('src')!==bs.video)v.src=bs.video;v.hidden=false;v.playbackRate=rate;edVidAt(v,Math.max(0,off+from*T));setTimeout(()=>{if(edPrev)v.play().catch(e=>{if(e&&e.name==='NotSupportedError'){badVid.add(bs.video);v.hidden=true}})},Math.max(0,(tw-ac.currentTime)*1000))}else v.hidden=true;
+  const useV=!!(bs.lib&&bs.isVideo&&bs.video&&settings.vid!==false&&!badVid.has(bs.video));
+  if(useV){EV.load(bs.video);EV.park(Math.max(0,off+from*T))}else EV.release();
   if(rec)edSnapState();
   edPrev={raf:0,rec:!!rec,tw,from,sc,T,vs:0,cb:from};
   $('edplay').textContent='Stop';$('edrec').setAttribute('aria-pressed',!!rec);
@@ -2817,7 +2812,7 @@ async function edPlay(rec){
     const cb=from+(ac.currentTime-tw)/sc,mb=edBeats();edPrev.cb=cb;
     if(cb>mb+2){edStop();return}
     if(cb>ed.vb+ed.z*.8||cb<ed.vb)ed.vb=Math.max(0,cb-ed.z*.25);
-    if(useV&&cb>=from&&performance.now()-edPrev.vs>700){edPrev.vs=performance.now();const want=off+cb*T;if(Math.abs(v.currentTime-want)>.35)try{v.currentTime=Math.max(0,want)}catch(e){}}
+    if(useV)EV.update(off+cb*T+(settings.vofs||0)/1000,ac.currentTime>=tw,rate);
     edDraw(cb);edPrev.raf=requestAnimationFrame(loop);
   };
   loop();
@@ -3195,9 +3190,7 @@ $('dddo').onclick=()=>{if(!ddSel.size){toast('Pick something to delete first.');
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='menu')freeMem(false)});
 window.addEventListener('error',e=>{if(e&&e.error)try{oops(e.error)}catch(_){}});
 window.addEventListener('unhandledrejection',e=>{try{console.error(e.reason)}catch(_){}});
-['vid','edvid'].forEach(i=>$(i).addEventListener('loadedmetadata',()=>vidFixDur($(i))));
-$('vid').onerror=()=>{const u=$('vid').getAttribute('src');if(!u)return;badVid.add(u);if(vidOn)vidOff()};
-$('edvid').onerror=()=>{const u=$('edvid').getAttribute('src');if(u){badVid.add(u);$('edvid').hidden=true}};
+applyVidFit();
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='play'&&!replaying&&!(mp&&mp.playing))pause()});
 ['pointerdown','touchend','keydown','click'].forEach(t=>document.addEventListener(t,acUnlock,{capture:true,passive:true}));
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&ac&&!(replaying&&state==='pause')&&ac.state!=='running')ac.resume().catch(()=>{})});
