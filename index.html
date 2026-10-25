@@ -58,6 +58,7 @@ body.mobile .opt{padding:10px 12px}
 canvas{-webkit-touch-callout:none}
 [hidden]{display:none!important}
 #vid,.edwrap video{transition:opacity .35s}
+#art.bk{filter:blur(22px) brightness(.85)}
 #vid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:14px;background:#000;pointer-events:none}
 body.mobile #vid{border-radius:0}
 #art{position:absolute;inset:-3%;width:106%;height:106%;object-fit:cover;filter:blur(4px);border-radius:14px;pointer-events:none}
@@ -180,8 +181,8 @@ select:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 </head>
 <body>
 <div id="wrap">
-  <video id="vid" playsinline webkit-playsinline muted preload="auto" disablepictureinpicture disableremoteplayback tabindex="-1" aria-hidden="true" hidden></video>
   <img id="art" alt="" hidden>
+  <video id="vid" playsinline webkit-playsinline muted preload="auto" disablepictureinpicture disableremoteplayback tabindex="-1" aria-hidden="true" hidden></video>
   <div id="toast" hidden></div>
   <div id="rpbar" hidden>
     <input type="range" id="rpseek" min="0" max="1000" value="0" aria-label="Replay position">
@@ -203,6 +204,7 @@ select:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
     <input class="nm" id="sname" type="text" maxlength="80" aria-label="Song name" placeholder="Song name" hidden>
     <div class="row" id="artrow" hidden><button class="alt chip" id="artbtn">Set album art</button><button class="alt chip" id="artclr">Remove art</button></div>
     <div class="row" id="librow" hidden><button class="alt chip" id="libdel">Delete song</button></div>
+    <div class="row" id="vidrow" hidden><button class="alt chip" id="vom" aria-label="Show the video earlier">&minus;</button><button class="alt chip" id="vsync" aria-label="Reset video delay">Video delay 0 ms</button><button class="alt chip" id="vop" aria-label="Show the video later">+</button></div>
     <input type="file" id="artfile" accept="image/*" hidden>
     <div class="row" id="diffs" role="group" aria-label="Difficulty"></div>
     <button class="alt" id="rec" style="font-size:13px;padding:6px 14px" disabled>Play a song to get a level recommendation</button>
@@ -387,6 +389,7 @@ select:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
       <div class="srow"><span>Countdown sounds</span><button class="alt" id="cdbtn">On</button></div>
       <div class="srow"><span>Hit text</span><button class="alt" id="popbtn">On</button></div>
       <div class="srow"><span>Beat flash</span><button class="alt" id="flbtn">On</button></div>
+      <div class="srow"><span>Hit ring</span><button class="alt" id="rngbtn">Subtle</button></div>
       
       <div class="srow"><span>Phone mode</span><button class="alt" id="mobbtn" aria-pressed="false">Off</button></div>
       <div class="srow"><span>Botplay</span><button class="alt" id="botbtn" aria-pressed="false">Off</button></div>
@@ -432,7 +435,7 @@ const W=400,LW=100;let H=600,HIT=510;
 const THEMES=[['#ff5d8f','#ffb703','#3ae0c4','#7aa2ff'],['#4cc9f0','#4895ef','#4361ee','#7209b7'],['#ff9e00','#ff6d00','#ff3d71','#c9184a'],['#f8f9fa','#ced4da','#adb5bd','#868e96'],['#d55e00','#e69f00','#009e73','#56b4e9'],['#b8f400','#00f5d4','#ff00e5','#ffe600'],['#95d5b2','#52b788','#2d6a4f','#d8f3dc'],['#ff99c8','#fcf6bd','#a9def9','#e4c1f9'],['#ff4d00','#ff8800','#ffc300','#ffee93'],['#00f5a0','#00d9f5','#7b61ff','#ff6ec7'],['#f72585','#7209b7','#3a0ca3','#4cc9f0'],['#6c63ff','#3f8efc','#00c2d1','#b8c0ff']];
 const THEME_NAMES=['Default','Ocean','Sunset','Mono','Colorblind safe','Neon','Forest','Candy','Ember','Aurora','Retro','Midnight'];
 let COL=THEMES[0].slice();
-const DEF={vol:.8,off:0,spd:1,pops:true,flash:!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches),theme:0,vdim:.6,hud:'classic',mode:'auto',prev:true,vid:true,cdt:true,hap:true,ui:75,hpPos:'side',keys:['d','f','j','k']};
+const DEF={vol:.8,off:0,spd:1,pops:true,flash:!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches),ring:(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)?0:1,theme:0,vdim:.6,hud:'classic',mode:'auto',prev:true,vid:true,cdt:true,hap:true,ui:75,hpPos:'side',keys:['d','f','j','k']};
 let settings=Object.assign({},DEF),KEYS=DEF.keys.slice();
 try{const st=JSON.parse(localStorage.getItem('fl:settings'));if(st)Object.assign(settings,st)}catch(e){}
 if(!Array.isArray(settings.keys)||settings.keys.length!==4)settings.keys=DEF.keys.slice();
@@ -892,7 +895,7 @@ function renderMenu(){
   });
   if(!$('songs').children.length)$('songs').innerHTML='<p style="padding:8px">No songs match. Try a different search or filter.</p>';
   profileLabel();$('songs').scrollTop=st0;const cs=SONGS[selS],ni=$('sname'),rb=$('rec'),rc=recommend(cs);
-  ni.hidden=!cs.lib;$('artrow').hidden=!(cs.lib&&!cs.isVideo);$('librow').hidden=!cs.lib;if(!ni.hidden&&document.activeElement!==ni)ni.value=cs.name;
+  ni.hidden=!cs.lib;$('artrow').hidden=!(cs.lib&&!cs.isVideo);$('librow').hidden=!cs.lib;$('vidrow').hidden=!(cs.lib&&cs.isVideo);$('vsync').textContent='Video delay '+((cs.voff||0)>0?'+':'')+(cs.voff||0)+' ms';if(!ni.hidden&&document.activeElement!==ni)ni.value=cs.name;
   if(rc){$('diffs').children[rc.i].textContent=DIFFS[rc.i].name+' ★';rb.disabled=false;rb.textContent='Recommended for you: '+DIFFS[rc.i].name+' (about '+rc.n.toFixed(1)+' notes per second, peaks near '+rc.pk.toFixed(1)+')';rb.onclick=()=>{selD=rc.i;renderMenu()}}
   else{rb.disabled=true;rb.onclick=null;rb.textContent=cs.custom&&!cs.an?'Load a song to see a recommendation':'Play a song to get a level recommendation'}
   document.documentElement.style.setProperty('--acc',SONGS[selS].acc);
@@ -1341,7 +1344,7 @@ function beginNow0(){
   start=ac.currentTime+.3+(replaying?0:3);scheduleMusic(cur.chart&&!cur.custom?start+LEAD:start);
   if(!replaying&&settings.cdt!==false){const so=settings.off/1000;try{[0,1,2].forEach(i=>tone(660,start+so-3.3+i,.1,'sine',.16));tone(1047,start+so-.3,.25,'sine',.2)}catch(e){}}
   vidOn=!!(cur.custom&&cur.video&&settings.vid!==false&&!badVid.has(cur.video));
-  artOn=!!(cur.custom&&cur.artUrl&&!vidOn);{const a=$('art');a.hidden=!artOn;if(artOn&&a.getAttribute('src')!==cur.artUrl)a.src=cur.artUrl}
+  syncArt();
   {const v=$('vid');v.hidden=!vidOn;cv.classList.toggle('vid',vidOn||artOn);if(vidOn)vidSetup(v,cur.video);else if(v.getAttribute('src'))vidRelease()}
   state='play';show(null);
   if(mobile&&navigator.wakeLock)navigator.wakeLock.request('screen').catch(()=>{});
@@ -1366,7 +1369,7 @@ class VidSync{
     el.addEventListener('error',()=>{if(this.on&&this.url)this.fail()});
     el.addEventListener('playing',()=>{this.err=0;this.noGest=false});
   }
-  reset(){this.err=0;this.noGest=false;this.pAt=0;this.sAt=0;this.rAt=0;this.wait=0;this.shown=0;this.mt=null;this.mtAt=0;this.v.style.opacity=0}
+  reset(){this.err=0;this.noGest=false;this.pAt=0;this.sAt=0;this.rAt=0;this.wait=0;this.shown=0;this.mt=null;this.mtAt=0;this.qAt=0;this.qT=null;this.qD=0;this.heavy=0;this.v.style.opacity=0}
   load(url){
     const v=this.v;this.url=url;this.on=true;this.reset();
     v.muted=v.defaultMuted=true;v.playsInline=true;v.preload='auto';v.setAttribute('playsinline','');v.setAttribute('webkit-playsinline','');
@@ -1398,17 +1401,22 @@ class VidSync{
       return;
     }
     if(v.seeking||v.readyState<2||tt<0)return;
+    /* if the device cannot decode the video fast enough it would drag the whole game down, so switch it off */
+    if(T-this.qAt>2000){this.qAt=T;const q=v.getVideoPlaybackQuality&&v.getVideoPlaybackQuality();if(q){if(this.qT==null){this.qT=q.totalVideoFrames;this.qD=q.droppedVideoFrames}else{const dt=q.totalVideoFrames-this.qT,dd=q.droppedVideoFrames-this.qD;this.qT=q.totalVideoFrames;this.qD=q.droppedVideoFrames;if(dt>=40&&dd/dt>.6){if(++this.heavy>=3)return this.fail(false,'heavy')}else this.heavy=0}}}
     const d=tt-this.pos(),ad=Math.abs(d),can=v.seekable&&v.seekable.length;
     if(ad>(this.o.hard||.5)&&can){if(T-this.sAt>(this.o.gap||1200)){this.sAt=T;this.seek(tt)}return}
     if(T-this.rAt>150){this.rAt=T;const lim=can?.06:.25,tr=Math.round(rate*(1+(ad>.04?Math.max(-lim,Math.min(lim,d*.5)):0))*100)/100;if(Math.abs(v.playbackRate-tr)>.004)v.playbackRate=tr}
   }
   release(){const v=this.v;this.on=false;if(this.vf&&v.cancelVideoFrameCallback)try{v.cancelVideoFrameCallback(this.vf)}catch(e){}this.vf=0;try{v.pause();v.hidden=true;v.removeAttribute('src');v.load()}catch(e){}this.url=null;this.mt=null}
   /* a video that cannot be played is switched off once and stays off, so nothing retries it every frame */
-  fail(quiet){const u=this.url,was=this.on;if(u)badVid.add(u);this.release();if(this.o.onFail)this.o.onFail(was&&!quiet)}
+  fail(quiet,why){const u=this.url,was=this.on;if(u)badVid.add(u);this.release();if(this.o.onFail)this.o.onFail(was&&!quiet,why)}
 }
-const MV=new VidSync($('vid'),{onFail:q=>{vidOn=false;cv.classList.toggle('vid',!!artOn);if(q)toast('This video could not be played here. Playing without it.')}});
+const MV=new VidSync($('vid'),{onFail:(q,why)=>{vidOn=false;syncArt();if(q)toast(why==='heavy'?'This video is too heavy for this device, so it was turned off.':'This video could not be played here. Playing without it.')}});
 const EV=new VidSync($('edvid'),{alpha:.5,hard:.35,gap:700});
-const vidTarget=t=>t-LEAD+(settings.vofs||0)/1000;
+const voffOf=c=>c?((c.baseRef&&c.baseRef.voff)||c.voff||0):0;
+const vidTarget=t=>t-LEAD-((settings.vofs||0)+voffOf(cur))/1000;
+/* picture behind or instead of the video: a poster frame of the video (blurred behind it in Fit mode, shown on its own if the video is off or fails) */
+function syncArt(){const a=$('art'),on=!!(cur&&cur.custom&&cur.artUrl&&(!vidOn||settings.vfit));artOn=on;a.hidden=!on;if(on&&a.getAttribute('src')!==cur.artUrl)a.src=cur.artUrl;a.classList.toggle('bk',!!vidOn);cv.classList.toggle('vid',!!(vidOn||artOn))}
 function applyVidFit(){const f=settings.vfit?'contain':'cover';$('vid').style.objectFit=f;$('edvid').style.objectFit=f}
 function vidSetup(v,url){MV.load(url)}
 function vidOff(quiet){MV.fail(quiet)}
@@ -1430,6 +1438,7 @@ function applyVid(){
   if(want===vidOn)return;
   vidOn=want;v.hidden=!vidOn;cv.classList.toggle('vid',vidOn||artOn);
   if(vidOn)vidSetup(v,cur.video);else vidRelease();
+  syncArt();
 }
 /* pausing stops the music and freezes the game clock, and resuming starts the music again at the right spot.
    Nothing depends on suspending or resuming the audio engine, which phones can refuse to restart. */
@@ -1546,7 +1555,7 @@ function press(l,tt){
   else if(d<.1*w){counts.good++;score+=200;jr(now,2);adj(.01);hpHit(1);pop('Good',COL[l],l)}
   else{counts.ok++;score+=100;jr(now,1);adj(.003);hpHit(.3);pop('Ok','#9d95c9',l)}
   combo++;maxCombo=Math.max(maxCombo,combo);
-  if(settings.flash&&!simming)fx.push({l,a:0});
+  {const rg=settings.ring==null?1:settings.ring;if(rg&&!simming)fx.push({l,a:0,k:rg})}
 }
 function finish(failed){
   state='end';if(failed)stopAudio();
@@ -1611,7 +1620,7 @@ function frame(){
   if(failNow&&state==='play'){failNow=false;finish(true)}
   if(state==='play'&&now>endT+1.2)finish();
   if(state==='play')pops.forEach(p=>p.age++);
-  if(fx.length){for(const f of fx){g.globalAlpha=Math.max(0,.7-f.a*.05);g.strokeStyle=COL[f.l];g.lineWidth=3;g.beginPath();g.arc(f.l*LW+LW/2,HIT,16+f.a*2.4,0,6.283);g.stroke();if(state==='play')f.a++}g.globalAlpha=1;fx=fx.filter(f=>f.a<14)}
+  if(fx.length){for(const f of fx){const bd=f.k===2;g.globalAlpha=Math.max(0,(bd?.95:.7)-f.a*(bd?.055:.05));g.strokeStyle=COL[f.l];g.lineWidth=bd?5:3;g.beginPath();g.arc(f.l*LW+LW/2,HIT,16+f.a*(bd?3.6:2.4),0,6.283);g.stroke();if(state==='play')f.a++}g.globalAlpha=1;fx=fx.filter(f=>f.a<(f.k===2?17:14))}
   pops=pops.filter(p=>p.age<30);
   g.font='800 18px Bricolage Grotesque,system-ui,sans-serif';
   for(const p of pops){g.globalAlpha=1-p.age/30;g.fillStyle=p.col==='#fff'?INK:p.col;g.fillText(p.txt,p.l*LW+LW/2,HIT-34-p.age*.8)}
@@ -1689,8 +1698,20 @@ function dbAll(st){return dbx(st,'readonly',o=>o.getAll())}
 /* ---- imported song library ---- */
 function libSub(o){const an=o.an||o.sum,d=o.dur||(o.buf&&o.buf.duration)||0;return '~'+Math.round(o.bpm||0)+' BPM'+(an?', '+(an.stable?'steady tempo':an.conf>1.3?'tempo drifts':'loose tempo')+(an.vf>.3?', vocals':'')+(an.tri?', triplet feel':''):'')+', '+Math.floor(d/60)+':'+String(Math.floor(d%60)).padStart(2,'0')+(o.isVideo?', with video':'')}
 function libEntry(rec){
-  const e={id:'lib-'+rec.id,recId:rec.id,lib:true,custom:true,name:rec.name,bpm:rec.bpm||120,beats:96,acc:'#ffb703',blob:rec.blob,isVideo:!!rec.isVideo,artBlob:rec.art||null,cache:null,sum:rec.an?{stable:rec.an.stable,conf:rec.an.conf,vf:rec.an.vf,tri:rec.an.tri}:null,audBlob:rec.aud||null,dur:rec.dur,an:null,buf:null,video:null,artUrl:null};
+  const e={id:'lib-'+rec.id,recId:rec.id,lib:true,custom:true,name:rec.name,bpm:rec.bpm||120,beats:96,acc:'#ffb703',blob:rec.blob,voff:rec.voff||0,isVideo:!!rec.isVideo,artBlob:rec.art||null,cache:null,sum:rec.an?{stable:rec.an.stable,conf:rec.an.conf,vf:rec.an.vf,tri:rec.an.tri}:null,audBlob:rec.aud||null,dur:rec.dur,an:null,buf:null,video:null,artUrl:null};
   e.sub=libSub(e);e.fp=rec.fp||(rec.blob&&rec.blob.size+':'+Math.round((rec.dur||0)*100));return e;
+}
+function makePoster(url){
+  return new Promise(res=>{const v=document.createElement('video');let fin=0;const T=setTimeout(()=>done(null),8000);
+    const done=b=>{if(fin)return;fin=1;clearTimeout(T);try{v.removeAttribute('src');v.load()}catch(e){}res(b)};
+    const grab=()=>{try{const w=v.videoWidth,h=v.videoHeight;if(!w||!h)return done(null);const k=Math.min(1,640/w),c=document.createElement('canvas');c.width=Math.round(w*k);c.height=Math.round(h*k);c.getContext('2d').drawImage(v,0,0,c.width,c.height);c.toBlob(b=>done(b),'image/jpeg',.82)}catch(e){done(null)}};
+    v.muted=true;v.playsInline=true;v.preload='auto';v.onerror=()=>done(null);
+    v.onloadeddata=()=>{const t=isFinite(v.duration)&&v.duration>4?Math.min(v.duration*.15,10):0;if(t>0&&v.seekable&&v.seekable.length){v.onseeked=grab;try{v.currentTime=t}catch(e){grab()}}else grab()};
+    v.src=url});
+}
+async function posterFor(o){
+  if(!o.isVideo||o.artBlob||o.posterTried||!o.blob)return;o.posterTried=1;
+  try{const url=o.video||(o.video=URL.createObjectURL(o.blob)),b=await makePoster(url);if(b&&b.size>500){o.artBlob=b;o.artUrl=URL.createObjectURL(b);libSave(o,{art:b})}}catch(e){}
 }
 function libSave(o,patch){dbGet('songs',o.recId).then(r=>{if(r)return dbPut('songs',Object.assign(r,patch))}).catch(()=>{})}
 function ensureLoaded(o){
@@ -1707,6 +1728,7 @@ function ensureLoaded(o){
     else{o.an=await analyze(o.buf,p=>{o.sub='Analyzing '+Math.round(p*100)+'%...';renderMenu()});o.cache=o.an;libSave(o,{an:o.an})}
     o.bpm=o.an.bpm;o.dur=o.buf.duration;
     if(o.isVideo&&!o.video)o.video=URL.createObjectURL(o.blob);
+    posterFor(o);
     if(o.artBlob&&!o.artUrl)o.artUrl=URL.createObjectURL(o.artBlob);
     o.sub=libSub(o);
   })().catch(()=>{o.buf=null;o.an=null;o.failed=true;o.sub='Could not load this song. You can delete it and import it again.'}).finally(()=>{o.loading=null;renderMenu()});
@@ -1780,6 +1802,7 @@ async function importFile(f){
     const o=libEntry(rec);o.buf=buf;o.an=an;o.sub=libSub(o);
     if(vb)o.video=URL.createObjectURL(vb);
     if(o.artBlob)o.artUrl=URL.createObjectURL(o.artBlob);
+    posterFor(o);
     SONGS.splice(SONGS.length-1,0,o);selS=SONGS.indexOf(o);
     toast(saved?'Song imported and saved.':'Imported, but this browser would not save it for next time.');
     ach('imp');
@@ -2630,7 +2653,7 @@ function syncSettings(){
   $('vol').value=Math.round(settings.vol*100);$('volv').textContent=Math.round(settings.vol*100)+'%';
   $('spd').value=Math.round(settings.spd*100);$('spdv').textContent=settings.spd.toFixed(2)+'x';
   $('off').value=settings.off;$('offv').textContent=(settings.off>0?'+':'')+settings.off+' ms';
-  $('uis').value=settings.ui||75;$('uisv').textContent=(settings.ui||75)+'%';$('vdim').value=Math.round(settings.vdim*100);$('vdv').textContent=Math.round(settings.vdim*100)+'%';$('vofs').value=settings.vofs||0;$('vofv').textContent=((settings.vofs||0)>0?'+':'')+(settings.vofs||0)+' ms';$('vfbtn').textContent=settings.vfit?'Fit':'Fill';applyVidFit();renderThemes();renderExtra();
+  $('uis').value=settings.ui||75;$('uisv').textContent=(settings.ui||75)+'%';$('vdim').value=Math.round(settings.vdim*100);$('vdv').textContent=Math.round(settings.vdim*100)+'%';$('vofs').value=settings.vofs||0;$('vofv').textContent=((settings.vofs||0)>0?'+':'')+(settings.vofs||0)+' ms';$('vfbtn').textContent=settings.vfit?'Fit':'Fill';applyVidFit();$('rngbtn').textContent=['Off','Subtle','Bold'][settings.ring==null?1:settings.ring];renderThemes();renderExtra();
   [['popbtn','pops'],['flbtn','flash'],['prvbtn','prev'],['vdbtn','vid'],['cdbtn','cdt'],['hapbtn','hap']].forEach(([id,k])=>{const b=$(id);b.textContent=settings[k]?'On':'Off';b.setAttribute('aria-pressed',settings[k])});
   renderKeys();
 }
@@ -2649,7 +2672,8 @@ function renderThemes(){
     b.onclick=()=>{applyTheme(i);saveSettings();renderThemes();if(i!==0)ach('thm')};t.appendChild(b)});
 }
 applyTheme(settings.theme||0);
-$('vofs').oninput=e=>{settings.vofs=+e.target.value;saveSettings();syncSettings()};$('vfbtn').onclick=()=>{settings.vfit=!settings.vfit;saveSettings();syncSettings()};
+{const voStep=d=>{const x=SONGS[selS];if(!x||!x.lib||!x.isVideo)return;x.voff=Math.max(-1000,Math.min(1000,d===0?0:(x.voff||0)+d));libSave(x,{voff:x.voff});renderMenu()};$('vom').onclick=()=>voStep(-50);$('vop').onclick=()=>voStep(50);$('vsync').onclick=()=>voStep(0)}
+$('vofs').oninput=e=>{settings.vofs=+e.target.value;saveSettings();syncSettings()};$('vfbtn').onclick=()=>{settings.vfit=!settings.vfit;saveSettings();syncSettings();if(cur&&(state==='play'||state==='pause'))syncArt()};$('rngbtn').onclick=()=>{settings.ring=((settings.ring==null?1:settings.ring)+1)%3;saveSettings();syncSettings()};
 $('vdim').oninput=e=>{settings.vdim=e.target.value/100;saveSettings();syncSettings()};
 function applyUi(){document.documentElement.style.setProperty('--ui',(settings.ui||75)/100)}
 $('uis').oninput=e=>{settings.ui=+e.target.value;saveSettings();applyUi();syncSettings()};
@@ -2812,7 +2836,7 @@ async function edPlay(rec){
     const cb=from+(ac.currentTime-tw)/sc,mb=edBeats();edPrev.cb=cb;
     if(cb>mb+2){edStop();return}
     if(cb>ed.vb+ed.z*.8||cb<ed.vb)ed.vb=Math.max(0,cb-ed.z*.25);
-    if(useV)EV.update(off+cb*T+(settings.vofs||0)/1000,ac.currentTime>=tw,rate);
+    if(useV)EV.update(off+cb*T-((settings.vofs||0)+(bs.voff||0))/1000,ac.currentTime>=tw,rate);
     edDraw(cb);edPrev.raf=requestAnimationFrame(loop);
   };
   loop();
