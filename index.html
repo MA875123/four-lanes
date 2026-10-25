@@ -365,6 +365,7 @@ body.mobile #pbtn{padding:0;width:52px;height:52px;font-size:0}
       <div class="srow"><span>Measure audio delay</span><button class="alt" id="calbtn">Calibrate</button></div>
       <div class="srow"><span>Song preview on select</span><button class="alt" id="prvbtn">On</button></div>
       <div class="srow"><span>Background video</span><button class="alt" id="vdbtn">On</button></div>
+      <div class="srow"><span>Vibration</span><button class="alt" id="hapbtn">On</button></div>
       <div class="srow"><span>Countdown sounds</span><button class="alt" id="cdbtn">On</button></div>
       <div class="srow"><span>Hit text</span><button class="alt" id="popbtn">On</button></div>
       <div class="srow"><span>Beat flash</span><button class="alt" id="flbtn">On</button></div>
@@ -413,7 +414,7 @@ const W=400,LW=100;let H=600,HIT=510;
 const THEMES=[['#ff5d8f','#ffb703','#3ae0c4','#7aa2ff'],['#4cc9f0','#4895ef','#4361ee','#7209b7'],['#ff9e00','#ff6d00','#ff3d71','#c9184a'],['#f8f9fa','#ced4da','#adb5bd','#868e96'],['#d55e00','#e69f00','#009e73','#56b4e9'],['#b8f400','#00f5d4','#ff00e5','#ffe600'],['#95d5b2','#52b788','#2d6a4f','#d8f3dc'],['#ff99c8','#fcf6bd','#a9def9','#e4c1f9'],['#ff4d00','#ff8800','#ffc300','#ffee93'],['#00f5a0','#00d9f5','#7b61ff','#ff6ec7'],['#f72585','#7209b7','#3a0ca3','#4cc9f0'],['#6c63ff','#3f8efc','#00c2d1','#b8c0ff']];
 const THEME_NAMES=['Default','Ocean','Sunset','Mono','Colorblind safe','Neon','Forest','Candy','Ember','Aurora','Retro','Midnight'];
 let COL=THEMES[0].slice();
-const DEF={vol:.8,off:0,spd:1,pops:true,flash:true,theme:0,vdim:.6,hud:'classic',mode:'auto',prev:true,vid:true,cdt:true,ui:75,hpPos:'side',keys:['d','f','j','k']};
+const DEF={vol:.8,off:0,spd:1,pops:true,flash:true,theme:0,vdim:.6,hud:'classic',mode:'auto',prev:true,vid:true,cdt:true,hap:true,ui:75,hpPos:'side',keys:['d','f','j','k']};
 let settings=Object.assign({},DEF),KEYS=DEF.keys.slice();
 try{const st=JSON.parse(localStorage.getItem('fl:settings'));if(st)Object.assign(settings,st)}catch(e){}
 if(!Array.isArray(settings.keys)||settings.keys.length!==4)settings.keys=DEF.keys.slice();
@@ -1322,7 +1323,7 @@ function beginNow0(){
   if(!replaying&&settings.cdt!==false){const so=settings.off/1000;try{[0,1,2].forEach(i=>tone(660,start+so-3.3+i,.1,'sine',.16));tone(1047,start+so-.3,.25,'sine',.2)}catch(e){}}
   vidOn=!!(cur.custom&&cur.video&&settings.vid!==false&&!badVid.has(cur.video));
   artOn=!!(cur.custom&&cur.artUrl&&!vidOn);{const a=$('art');a.hidden=!artOn;if(artOn&&a.getAttribute('src')!==cur.artUrl)a.src=cur.artUrl}
-  {const v=$('vid');v.hidden=!vidOn;cv.classList.toggle('vid',vidOn||artOn);if(vidOn)vidSetup(v,cur.video)}
+  {const v=$('vid');v.hidden=!vidOn;cv.classList.toggle('vid',vidOn||artOn);if(vidOn)vidSetup(v,cur.video);else if(v.getAttribute('src'))vidRelease()}
   state='play';show(null);
   if(mobile&&navigator.wakeLock)navigator.wakeLock.request('screen').catch(()=>{});
 }
@@ -1340,16 +1341,18 @@ function pauseInfo(){
 /* a video that cannot be played is switched off once and stays off, so nothing keeps retrying it every frame */
 /* WebM files from phones and screen recorders often have no length or seek table, which breaks syncing on phones */
 function vidFixDur(v){
-  if(isFinite(v.duration)||v.__fd)return;v.__fd=1;
-  const back=()=>{v.removeEventListener('durationchange',back);v.__fd=0;try{v.currentTime=0}catch(e){}};
-  v.addEventListener('durationchange',back);setTimeout(()=>{v.__fd=0},4000);try{v.currentTime=1e7}catch(e){}
+  if(isFinite(v.duration)||v.__fd||v.currentTime>2)return;v.__fd=1;
+  const clr=()=>{v.removeEventListener('durationchange',done);clearTimeout(v.__ft);v.__fd=0},done=()=>{clr();try{v.currentTime=v.__t||0}catch(e){}};
+  v.addEventListener('durationchange',done);v.__ft=setTimeout(clr,4000);
+  try{v.currentTime=1e7}catch(e){clr()}
 }
+function edVidAt(v,t){v.__t=t;const go=()=>{if(v.seekable&&v.seekable.length)try{v.currentTime=t}catch(e){}};if(v.readyState>=1)go();else v.addEventListener('loadedmetadata',go,{once:true})}
 function vidSeek(v,t){if(!(v.seekable&&v.seekable.length))return;try{v.currentTime=t}catch(e){}}
 function vidOff(quiet){
   const v=$('vid'),u=v.getAttribute('src'),was=vidOn;
   if(u)badVid.add(u);
   vidOn=false;
-  try{v.pause();v.hidden=true}catch(e){}
+  try{v.pause();v.hidden=true;v.removeAttribute('src');v.load()}catch(e){}
   cv.classList.toggle('vid',!!artOn);
   if(was&&!quiet)toast('This video could not be played here. Playing without it.');
 }
@@ -1357,9 +1360,9 @@ function vidSetup(v,url){
   try{
     v.muted=true;v.defaultMuted=true;v.playsInline=true;v.preload='auto';
     v.setAttribute('playsinline','');v.setAttribute('webkit-playsinline','');
-    if(v.getAttribute('src')!==url){v.addEventListener('loadedmetadata',()=>vidFixDur(v),{once:true});v.src=url;try{v.load()}catch(e){}}
-    else{try{v.pause()}catch(e){}try{if(v.currentTime>.05)v.currentTime=0}catch(e){}}
-    vsT=0;vsP=0;vsBad=false;vsN=0;
+    if(v.getAttribute('src')!==url){v.src=url;try{v.load()}catch(e){}}
+    else{try{v.pause()}catch(e){}try{if(v.currentTime>.05){if(v.seekable&&v.seekable.length)v.currentTime=0;else v.load()}}catch(e){}}
+    v.__t=0;vsT=0;vsP=0;vsBad=false;vsN=0;
   }catch(e){}
 }
 function vidPrime(){
@@ -1386,10 +1389,12 @@ function vidKick(){
 }
 function vidSync(now){
   const v=$('vid'),T=performance.now();
-  if(v.error||(v.networkState===3&&v.getAttribute('src'))||(v.readyState>=1&&!v.videoWidth)){vidOff();return}
+  if(v.error){vidOff();return}
+  if(v.readyState>=1&&!v.videoWidth){vidOff(true);return}
   if(state!=='play'){if(!v.paused)v.pause();return}
   const tt=now-LEAD;
   if(tt<0){if(!v.paused)v.pause();return}
+  if(v.readyState===0&&!vsBad){if(!v.__w)v.__w=T;else if(T-v.__w>15000){vidOff();return}}else v.__w=0;
   const rate=replaying?rpSpeed:1;
   if(v.paused&&Math.abs(v.playbackRate-rate)>.001)v.playbackRate=rate;
   if(isFinite(v.duration)&&v.duration>0&&tt>v.duration){if(!v.paused)v.pause();return}
@@ -1402,13 +1407,19 @@ function vidSync(now){
   }else if(!v.seeking&&v.readyState>=2){
     /* small drift is fixed by speeding up or slowing down; seeking is a last resort because phones struggle with it */
     const d=tt-v.currentTime,ad=Math.abs(d);
-    if(ad>(replaying?.3:.5)){if(T-vsT>(replaying?250:1200)){vsT=T;vidSeek(v,tt)}}
-    else v.playbackRate=Math.max(.1,rate*(1+(ad>.06?Math.max(-.05,Math.min(.05,d*.4)):0)));
+    if(ad>(replaying?.3:.5)&&v.seekable&&v.seekable.length){if(T-vsT>(replaying?250:1200)){vsT=T;vidSeek(v,tt)}}
+    else if(T-(v.__rt||0)>200){
+      v.__rt=T;const lim=v.seekable&&v.seekable.length?.05:.25,tr=Math.round(Math.max(.1,rate*(1+(ad>.06?Math.max(-lim,Math.min(lim,d*.4)):0)))*100)/100;
+      if(Math.abs(v.playbackRate-tr)>.004)v.playbackRate=tr;
+    }
   }
 }
 function applyVid(){
-  vidOn=!!(cur.custom&&cur.video&&settings.vid!==false&&!badVid.has(cur.video));const v=$('vid');v.hidden=!vidOn;cv.classList.toggle('vid',vidOn||artOn);
-  if(vidOn){try{if(v.getAttribute('src')!==cur.video)v.src=cur.video}catch(e){}}
+  if(!cur||(state!=='play'&&state!=='pause'))return;
+  const v=$('vid'),want=!!(cur.custom&&cur.video&&settings.vid!==false&&!badVid.has(cur.video));
+  if(want===vidOn)return;
+  vidOn=want;v.hidden=!vidOn;cv.classList.toggle('vid',vidOn||artOn);
+  if(vidOn)vidSetup(v,cur.video);else vidRelease();
 }
 /* pausing stops the music and freezes the game clock, and resuming starts the music again at the right spot.
    Nothing depends on suspending or resuming the audio engine, which phones can refuse to restart. */
@@ -1478,6 +1489,7 @@ function rankNotes(){
     pt=n.t;
   });
 }
+function buzz(ms){if(settings.hap&&!replaying&&navigator.vibrate)try{navigator.vibrate(ms)}catch(e){}}
 function pop(txt,col,l){if(settings.pops)pops.push({txt,col,l,age:0})}
 /* The game clock follows the audio clock. When the audio clock stops (phones do this when a video starts or the OS
    interrupts sound) the clock carries on with the system timer instead, so notes and the countdown never freeze.
@@ -1519,7 +1531,7 @@ function press(l,tt){
   let best=null;
   for(const n of notes)if(n.l===l&&!n.done&&!n.skip&&!n.missed&&Math.abs(n.t-now)<.16*w&&(!best||Math.abs(n.t-now)<Math.abs(best.t-now)))best=n;
   if(!best)return;
-  const d=Math.abs(best.t-now);best.done=true;laneRun.h[l]++;
+  const d=Math.abs(best.t-now);best.done=true;buzz(8);laneRun.h[l]++;
   if(d<.05*w){counts.perfect++;score+=300;jr(now,3);adj(.014);hpHit(1.5);pop('Perfect','#fff',l)}
   else if(d<.1*w){counts.good++;score+=200;jr(now,2);adj(.01);hpHit(1);pop('Good',COL[l],l)}
   else{counts.ok++;score+=100;jr(now,1);adj(.003);hpHit(.3);pop('Ok','#9d95c9',l)}
@@ -1579,7 +1591,7 @@ function frame(){
     if(diff.auto&&!n.dec&&HIT-(n.t-now)*sp>-30){n.dec=1;n.skip=n.r>lvl}
     if(n.done||n.skip)continue;
     if(bot&&state==='play'&&!n.missed&&now>=n.t-.004){press(n.l);if(n.done)continue}
-    if(state==='play'&&!n.missed&&now-n.t>.16*diff.win){n.missed=true;counts.miss++;combo=0;adj(-.05);hpHit(-8*(diff.hpm||1));jr(now,0);laneRun.m[n.l]++;pop('Miss','#ff5d8f',n.l)}
+    if(state==='play'&&!n.missed&&now-n.t>.16*diff.win){n.missed=true;counts.miss++;buzz(28);combo=0;adj(-.05);hpHit(-8*(diff.hpm||1));jr(now,0);laneRun.m[n.l]++;pop('Miss','#ff5d8f',n.l)}
     const y=HIT-(n.t-now)*sp;
     if(y<-30||y>H+30)continue;
     g.globalAlpha=(n.missed?.25:1)*(settings.mods.fade?Math.max(0,1-Math.max(0,(y/HIT-.45)/.3)):1);g.fillStyle=COL[n.l];g.beginPath();g.roundRect(n.l*LW+10,y-(mobile?18:13),LW-20,mobile?36:26,9);g.fill();g.globalAlpha=1;
@@ -1705,7 +1717,8 @@ const isVid=f=>/^video\//.test(f.type)||/\.(mp4|mov|webm|m4v|mkv|ogv|3gp|3g2|avi
 async function probeVideo(f){
   const ext=(f.name.split('.').pop()||'').toLowerCase(),map={mkv:['video/webm','video/mp4','video/x-matroska'],webm:['video/webm'],mov:['video/quicktime','video/mp4'],avi:['video/x-msvideo','video/mp4'],ogv:['video/ogg'],m4v:['video/x-m4v','video/mp4'],qt:['video/quicktime','video/mp4'],f4v:['video/mp4'],asf:['video/x-ms-asf','video/mp4'],vob:['video/mpeg','video/mp4'],divx:['video/x-msvideo','video/mp4'],'3gp':['video/3gpp','video/mp4'],'3g2':['video/3gpp2','video/mp4'],ts:['video/mp2t','video/mp4'],mts:['video/mp2t','video/mp4'],m2ts:['video/mp2t','video/mp4'],mpg:['video/mpeg','video/mp4'],mpeg:['video/mpeg','video/mp4'],flv:['video/x-flv','video/mp4'],wmv:['video/x-ms-wmv','video/mp4']};
   const cands=[f.type].concat(map[ext]||['video/mp4'],['video/mp4','video/webm','video/quicktime']).filter((x,i,a)=>x&&a.indexOf(x)===i);
-  for(const [ci,t] of cands.entries()){
+  const cp=document.createElement('video');
+  for(const [ci,t] of cands.filter(x=>cp.canPlayType(x)).entries()){
     const b=f.type===t?f:new Blob([f],{type:t}),u=URL.createObjectURL(b),v=document.createElement('video');
     const ok=await new Promise(res=>{const T=setTimeout(()=>res(false),ci?3000:6000);v.muted=true;v.playsInline=true;v.setAttribute('playsinline','');v.preload='metadata';v.style.cssText='position:fixed;left:-9999px;top:0;width:2px;height:2px;opacity:0;pointer-events:none';document.body.appendChild(v);v.onloadedmetadata=()=>{clearTimeout(T);res(v.videoWidth>0&&v.duration>0)};v.onerror=()=>{clearTimeout(T);res(false)};v.src=u});
     v.removeAttribute('src');v.load();v.remove();URL.revokeObjectURL(u);
@@ -2596,13 +2609,13 @@ function syncSettings(){
   $('spd').value=Math.round(settings.spd*100);$('spdv').textContent=settings.spd.toFixed(2)+'x';
   $('off').value=settings.off;$('offv').textContent=(settings.off>0?'+':'')+settings.off+' ms';
   $('uis').value=settings.ui||75;$('uisv').textContent=(settings.ui||75)+'%';$('vdim').value=Math.round(settings.vdim*100);$('vdv').textContent=Math.round(settings.vdim*100)+'%';renderThemes();renderExtra();
-  [['popbtn','pops'],['flbtn','flash'],['prvbtn','prev'],['vdbtn','vid'],['cdbtn','cdt']].forEach(([id,k])=>{const b=$(id);b.textContent=settings[k]?'On':'Off';b.setAttribute('aria-pressed',settings[k])});
+  [['popbtn','pops'],['flbtn','flash'],['prvbtn','prev'],['vdbtn','vid'],['cdbtn','cdt'],['hapbtn','hap']].forEach(([id,k])=>{const b=$(id);b.textContent=settings[k]?'On':'Off';b.setAttribute('aria-pressed',settings[k])});
   renderKeys();
 }
 $('vol').oninput=e=>{settings.vol=e.target.value/100;saveSettings();syncSettings()};
 $('spd').oninput=e=>{settings.spd=e.target.value/100;saveSettings();syncSettings()};
 $('off').oninput=e=>{settings.off=+e.target.value;saveSettings();syncSettings()};
-[['popbtn','pops'],['flbtn','flash'],['prvbtn','prev'],['vdbtn','vid'],['cdbtn','cdt']].forEach(([id,k])=>{$(id).onclick=()=>{settings[k]=!settings[k];saveSettings();syncSettings()}});
+[['popbtn','pops'],['flbtn','flash'],['prvbtn','prev'],['vdbtn','vid'],['cdbtn','cdt'],['hapbtn','hap']].forEach(([id,k])=>{$(id).onclick=()=>{settings[k]=!settings[k];saveSettings();syncSettings();if(k==='vid')applyVid()}});
 $('rkeys').onclick=()=>{KEYS=DEF.keys.slice();settings.keys=KEYS.slice();rebind=null;saveSettings();syncSettings()};
 const THEME_ROOT=document.documentElement;
 function applyTheme(i){settings.theme=i;COL=THEMES[i].slice();COL.forEach((c,j)=>THEME_ROOT.style.setProperty('--c'+j,c))}
@@ -2767,7 +2780,7 @@ async function edPlay(rec){
   }
   if(edHitOn)ed.notes.forEach(([bt,l])=>{if(bt<from-1e-6)return;const f=bs.lib?262*Math.pow(2,[0,3,7,10][l]/12):bs.root*Math.pow(2,bs.scale[bs.lane[l]]/12);tone(f,tw+(bt-from)*sc,.22,bs.lib?'triangle':bs.lead,bs.lib?.2:Math.max(.16,(bs.lv||.14)*1.3))});
   const v=$('edvid'),useV=!!(bs.lib&&bs.isVideo&&bs.video&&settings.vid!==false&&!badVid.has(bs.video));
-  if(useV){if(v.getAttribute('src')!==bs.video)v.src=bs.video;v.hidden=false;v.playbackRate=rate;try{v.currentTime=Math.max(0,off+from*T)}catch(e){}setTimeout(()=>{if(edPrev)v.play().catch(e=>{if(e&&e.name==='NotSupportedError'){badVid.add(bs.video);v.hidden=true}})},Math.max(0,(tw-ac.currentTime)*1000))}else v.hidden=true;
+  if(useV){if(v.getAttribute('src')!==bs.video)v.src=bs.video;v.hidden=false;v.playbackRate=rate;edVidAt(v,Math.max(0,off+from*T));setTimeout(()=>{if(edPrev)v.play().catch(e=>{if(e&&e.name==='NotSupportedError'){badVid.add(bs.video);v.hidden=true}})},Math.max(0,(tw-ac.currentTime)*1000))}else v.hidden=true;
   if(rec)edSnapState();
   edPrev={raf:0,rec:!!rec,tw,from,sc,T,vs:0,cb:from};
   $('edplay').textContent='Stop';$('edrec').setAttribute('aria-pressed',!!rec);
@@ -2936,7 +2949,7 @@ $('edmirror').onclick=()=>{if(!ed.notes.length)return;edSnapState();ed.notes=ed.
 $('edclear').onclick=()=>{if(!ed.notes.length)return;if(!edClrArm){edClrArm=1;edMsg('Press Clear all again to remove every note.');setTimeout(()=>{edClrArm=0},3000);return}edClrArm=0;edSnapState();ed.notes=[];edChanged();edMsg('All notes cleared. You can undo this.')};
 $('edmet').onclick=()=>{edMetOn=!edMetOn;edFill()};
 $('edhit').onclick=()=>{edHitOn=!edHitOn;edFill()};
-$('edvidt').onclick=()=>{settings.vid=settings.vid===false;saveSettings();if(settings.vid===false)$('edvid').hidden=true;edFill()};
+$('edvidt').onclick=()=>{settings.vid=settings.vid===false;saveSettings();if(settings.vid===false){const e=$('edvid');e.pause();e.hidden=true}edFill()};
 $('ednew').onclick=()=>{edStop();ed=edBlank();edHist=[];edRedoS=[];try{localStorage.removeItem('fl:eddraft')}catch(e){}edFill();edDraw();edMsg('Started a new chart.')};
 $('eddel').onclick=()=>{if(!ed.id){edMsg('This chart is not saved yet.');return}edStop();charts=charts.filter(c=>c.id!==ed.id);saveCharts();syncChartSongs();ed=edBlank();edFill();edDraw();edMsg('Chart deleted.')};
 $('edload').onchange=async e=>{
@@ -2954,7 +2967,7 @@ $('edimp').onclick=()=>edParse($('edjson').value);
 $('edpack').onclick=edPack;
 $('edfile').onclick=()=>$('edfilein').click();
 $('edfilein').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)edUnpack(f)};
-$('edback').onclick=()=>{edStop();edWantImport=false;if(ed.dirty)edDraft();renderMenu();show('menu')};
+$('edback').onclick=()=>{edStop();try{const e=$('edvid');e.removeAttribute('src');e.load()}catch(x){}edWantImport=false;if(ed.dirty)edDraft();renderMenu();show('menu')};
 $('edbtn').onclick=openEditor;
 $('modsbtn').onclick=()=>show('mods');
 $('modsback').onclick=()=>{renderMenu();show('menu')};
@@ -3145,12 +3158,16 @@ $('linkgo').onclick=linkImport;$('linkx').onclick=()=>$('linkpop').classList.add
 $('edlink').onclick=()=>{edWantImport=true;linkOpen()};
 if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
 try{const ios=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);if(ios&&navigator.standalone===false&&!localStorage.getItem('fl:a2hs')){localStorage.setItem('fl:a2hs','1');setTimeout(()=>toast('Tip: tap Share, then Add to Home Screen, to play full screen like an app.'),6000)}}catch(e){}
+if(!navigator.vibrate)$('hapbtn').parentNode.style.display='none';
 $('rdata').onclick=ddOpen;$('ddback').onclick=()=>show('settings');
 $('ddall').onclick=()=>{['scores','prof','fav','pl','charts','replays','songs','set'].forEach(k=>ddSel.add(k));ddRender()};
 $('ddnone').onclick=()=>{ddSel.clear();ddRender()};
 $('ddmem').onclick=()=>{freeMem(true);toast('Memory freed.')};
 $('dddo').onclick=()=>{if(!ddSel.size){toast('Pick something to delete first.');return}if(!ddArm){ddArm=1;$('dddo').textContent='Tap again to delete '+ddSel.size+' item'+(ddSel.size>1?'s':'')+' for good';setTimeout(()=>{ddArm=0;$('dddo').textContent='Delete selected'},4000);return}ddArm=0;ddRun()};
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='menu')freeMem(false)});
+window.addEventListener('error',e=>{if(e&&e.error)try{oops(e.error)}catch(_){}});
+window.addEventListener('unhandledrejection',e=>{try{console.error(e.reason)}catch(_){}});
+['vid','edvid'].forEach(i=>$(i).addEventListener('loadedmetadata',()=>vidFixDur($(i))));
 $('vid').onerror=()=>{const u=$('vid').getAttribute('src');if(!u)return;badVid.add(u);if(vidOn)vidOff()};
 $('edvid').onerror=()=>{const u=$('edvid').getAttribute('src');if(u){badVid.add(u);$('edvid').hidden=true}};
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='play'&&!replaying&&!(mp&&mp.playing))pause()});
