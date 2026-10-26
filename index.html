@@ -177,13 +177,26 @@ select:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 #xpinfo{width:100%;max-width:340px;padding:10px 14px;border:1px solid var(--line);border-radius:14px;background:var(--panel);line-height:1.5}#xpinfo:empty{display:none}
 @media (prefers-reduced-motion:reduce){button{transition:none}}
 @supports not (color:color-mix(in srgb,red 50%,blue)){#rpbar,.dock,#pbtn{background:var(--bg)}#menu .opt[aria-pressed=true]{background:var(--line)}}
+.tabs{display:flex;gap:6px;width:100%;overflow-x:auto;scrollbar-width:none;position:sticky;top:0;z-index:2;background:var(--bg);padding:4px 0 8px}
+.tabs::-webkit-scrollbar{display:none}
+.tabs .alt{flex:1 0 auto;padding:7px 14px;font-size:14px;font-weight:800}
+.alt[aria-selected=true]{border-color:var(--c2);color:var(--c2)}
+.tabp[hidden]{display:none}
+#prof details{width:100%}
+#xpinfo{display:flex;flex-direction:column;gap:3px}
+.xr{display:flex;justify-content:space-between;gap:12px;font-size:13.5px;font-weight:500;text-align:left}
+.xr b{font-weight:800;color:var(--c2)}
+.xt{margin-top:6px;padding-top:6px;border-top:1px solid var(--line);font-size:15px;font-weight:800}
+.xn{justify-content:center;text-align:center;font-weight:800;color:var(--c1)}
+#settings.screen>:first-child{margin-top:0}#settings.screen>:last-child{margin-bottom:0}
+#setback{margin-top:auto;position:sticky;bottom:6px;box-shadow:0 0 0 8px var(--bg)}
 </style>
 </head>
 <body>
 <div id="wrap">
   <img id="art" alt="" hidden>
   <video id="vid" playsinline webkit-playsinline muted preload="auto" disablepictureinpicture disableremoteplayback tabindex="-1" aria-hidden="true" hidden></video>
-  <div id="toast" hidden></div>
+  <div id="toast" role="status" aria-live="polite" hidden></div>
   <div id="rpbar" hidden>
     <input type="range" id="rpseek" min="0" max="1000" value="0" aria-label="Replay position">
     <div class="row">
@@ -287,16 +300,16 @@ select:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
     <p id="prating" style="color:var(--ink);font-weight:800"></p>
     <button class="alt" id="profmore">More info</button>
     <h2 style="font-size:16px">Daily missions</h2><div class="set" id="pmiss"></div>
-    <h2 style="font-size:16px">Top plays</h2><div class="set" id="ptop"></div>
-    <p id="pstats" style="font-size:14px"></p>
-    <textarea id="bkjson" class="nm" rows="3" placeholder="Your backup text appears here. Paste a backup here to restore it." style="font-size:12px"></textarea>
-    <div class="set" id="skillinfo"></div>
-    <div class="row"><button class="main" id="bkfile" style="padding:10px 22px">Save backup file</button><button class="alt" id="bkrest">Restore from file</button></div>
-    <div class="row"><button class="alt chip" id="bkmed" aria-pressed="true">Include songs and replays</button></div>
-    <input type="file" id="bkin" accept=".fl4,.json,application/json,application/octet-stream" hidden>
-    <p style="font-size:12px">Text backup (settings only):</p>
-    <div class="row"><button class="alt chip" id="bkexp">Back up data</button><button class="alt chip" id="bkcopy">Copy</button><button class="alt chip" id="bkimp">Restore</button></div>
-    <p id="bkmsg" style="font-size:13px"></p>
+    <details class="edtools" id="bkbox"><summary>Backup and restore</summary>
+      <div class="row"><button class="main" id="bkfile" style="padding:10px 22px">Save backup file</button><button class="alt" id="bkrest">Restore from file</button></div>
+      <div class="row"><button class="alt chip" id="bkmed" aria-pressed="true">Include songs and replays</button></div>
+      <input type="file" id="bkin" accept=".fl4,.json,application/json,application/octet-stream" hidden>
+      <details class="edtools" style="margin-top:8px"><summary style="font-weight:600;font-size:13px">Text backup (settings only)</summary>
+        <textarea id="bkjson" class="nm" rows="3" placeholder="Your backup text appears here. Paste a backup here to restore it." style="font-size:12px"></textarea>
+        <div class="row"><button class="alt chip" id="bkexp">Back up data</button><button class="alt chip" id="bkcopy">Copy</button><button class="alt chip" id="bkimp">Restore</button></div>
+      </details>
+      <p id="bkmsg" style="font-size:13px"></p>
+    </details>
     <button class="main" id="profback">Back</button>
   </div>
 
@@ -365,35 +378,52 @@ select:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 
   <div class="screen hide" id="settings">
     <h2>Settings</h2>
-    <div class="set">
+    <div class="tabs" id="settabs" role="tablist" aria-label="Settings sections">
+      <button class="alt chip" role="tab" data-t="play">Play</button><button class="alt chip" role="tab" data-t="audio">Audio</button><button class="alt chip" role="tab" data-t="look">Visuals</button><button class="alt chip" role="tab" data-t="video">Video</button><button class="alt chip" role="tab" data-t="menu">Interface</button>
+    </div>
+    <div class="set tabp" data-p="play">
       <div class="srow"><span>Keys: tap one, then press a key</span></div>
       <div class="srow"><span class="row" id="keyrow" style="justify-content:flex-start;width:auto"></span><button class="alt" id="rkeys">Reset keys</button></div>
-      <label class="srow"><span>Music volume <b id="volv"></b></span><input type="range" id="vol" min="0" max="100"></label>
       <label class="srow"><span>Note speed <b id="spdv"></b></span><input type="range" id="spd" min="70" max="140" step="5"></label>
+      <div class="srow"><span>Early and late hints</span><button class="alt" id="elbtn">Off</button></div>
+      <div class="srow"><span>Vibration</span><button class="alt" id="hapbtn">On</button></div>
+      <div class="srow"><span>Pause when the window loses focus</span><button class="alt" id="pbbtn">On</button></div>
+      <div class="srow"><span>Botplay</span><button class="alt" id="botbtn" aria-pressed="false">Off</button></div>
+    </div>
+    <div class="set tabp" data-p="audio" hidden>
+      <label class="srow"><span>Music volume <b id="volv"></b></span><input type="range" id="vol" min="0" max="100"></label>
       <label class="srow"><span>Audio delay <b id="offv"></b></span><input type="range" id="off" min="-150" max="150" step="5"></label>
-      <label class="srow"><span>Menu size <b id="uisv"></b></span><input type="range" id="uis" min="25" max="400" step="5"></label>
-      <div class="srow"><span></span><button class="alt chip" id="uisreset">Reset menu size</button></div>
-      <div class="srow" style="flex-direction:column;align-items:flex-start"><span>Appearance</span><span class="row" id="uithemes" style="justify-content:flex-start"></span></div>
+      <div class="srow"><span>Measure audio delay</span><button class="alt" id="calbtn">Calibrate</button></div>
+      <div class="srow"><span>Hit sounds</span><button class="alt" id="hsbtn">Off</button></div>
+      <label class="srow"><span>Hit sound volume <b id="hsvv"></b></span><input type="range" id="hsv" min="10" max="100" step="5"></label>
+      <div class="srow"><span>Countdown sounds</span><button class="alt" id="cdbtn">On</button></div>
+      <div class="srow"><span>Song preview on select</span><button class="alt" id="prvbtn">On</button></div>
+    </div>
+    <div class="set tabp" data-p="look" hidden>
+      <div class="srow" style="flex-direction:column;align-items:flex-start"><span>Lane colors</span><span class="row" id="themes" style="justify-content:flex-start"></span></div>
       <div class="srow"><span>HUD style</span><button class="alt" id="hudbtn">Classic</button></div>
       <div class="srow"><span>Health bar position</span><button class="alt" id="hppbtn">Side</button></div>
       <div class="srow" style="flex-direction:column;align-items:flex-start"><span>HUD stats</span><span class="row" id="hschips" style="justify-content:flex-start"></span></div>
-      
-      <div class="srow" style="flex-direction:column;align-items:flex-start"><span>Lane colors</span><span class="row" id="themes" style="justify-content:flex-start"></span></div>
-      <label class="srow"><span>Background brightness <b id="vdv"></b></span><input type="range" id="vdim" min="10" max="100" step="5"></label>
-      <div class="srow"><span>Measure audio delay</span><button class="alt" id="calbtn">Calibrate</button></div>
-      <div class="srow"><span>Song preview on select</span><button class="alt" id="prvbtn">On</button></div>
-      <div class="srow"><span>Background video</span><button class="alt" id="vdbtn">On</button></div>
-      <div class="srow"><span>Video framing</span><button class="alt" id="vfbtn">Fill</button></div>
-      <label class="srow"><span>Video delay <b id="vofv"></b></span><input type="range" id="vofs" min="-300" max="300" step="10"></label>
-      <div class="srow"><span>Vibration</span><button class="alt" id="hapbtn">On</button></div>
-      <div class="srow"><span>Countdown sounds</span><button class="alt" id="cdbtn">On</button></div>
+      <div class="srow"><span>Note thickness</span><button class="alt" id="nzbtn">Normal</button></div>
       <div class="srow"><span>Hit text</span><button class="alt" id="popbtn">On</button></div>
       <div class="srow"><span>Beat flash</span><button class="alt" id="flbtn">On</button></div>
       <div class="srow"><span>Hit ring</span><button class="alt" id="rngbtn">Subtle</button></div>
-      
+    </div>
+    <div class="set tabp" data-p="video" hidden>
+      <div class="srow"><span>Background video</span><button class="alt" id="vdbtn">On</button></div>
+      <div class="srow"><span>Video framing</span><button class="alt" id="vfbtn">Fill</button></div>
+      <label class="srow"><span>Video delay <b id="vofv"></b></span><input type="range" id="vofs" min="-300" max="300" step="10"></label>
+      <label class="srow"><span>Background brightness <b id="vdv"></b></span><input type="range" id="vdim" min="10" max="100" step="5"></label>
+    </div>
+    <div class="set tabp" data-p="menu" hidden>
+      <div class="srow" style="flex-direction:column;align-items:flex-start"><span>Appearance</span><span class="row" id="uithemes" style="justify-content:flex-start"></span></div>
+      <label class="srow"><span>Menu size <b id="uisv"></b></span><input type="range" id="uis" min="25" max="400" step="5"></label>
+      <div class="srow"><span></span><button class="alt chip" id="uisreset">Reset menu size</button></div>
       <div class="srow"><span>Phone mode</span><button class="alt" id="mobbtn" aria-pressed="false">Off</button></div>
-      <div class="srow"><span>Botplay</span><button class="alt" id="botbtn" aria-pressed="false">Off</button></div>
+      <div class="srow"><span>Keep screen awake (phone)</span><button class="alt" id="wkbtn">On</button></div>
+      <div class="srow" id="fsrow"><span>Full screen</span><button class="alt" id="fsbtn">Toggle</button></div>
       <div class="srow"><span>Saved data</span><button class="alt" id="rdata">Delete data...</button></div>
+      <div class="srow"><span>Settings</span><button class="alt" id="rsbtn">Reset to defaults</button></div>
     </div>
     <button class="main" id="setback">Back</button>
   </div>
@@ -413,7 +443,7 @@ select:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
     <div class="big" id="grade">A</div>
     <h2 id="etitle"></h2>
     <p id="stats"></p>
-    <p id="xpinfo" style="color:var(--ink);font-weight:800;white-space:pre-line;font-size:14px"></p>
+    <div id="xpinfo"></div>
     <div class="set" id="mpres" hidden></div>
     <button class="main" id="mpbackbtn" hidden>Back to lobby</button>
     <button class="main" id="nextbtn" hidden>Next song</button>
@@ -435,7 +465,7 @@ const W=400,LW=100;let H=600,HIT=510;
 const THEMES=[['#ff5d8f','#ffb703','#3ae0c4','#7aa2ff'],['#4cc9f0','#4895ef','#4361ee','#7209b7'],['#ff9e00','#ff6d00','#ff3d71','#c9184a'],['#f8f9fa','#ced4da','#adb5bd','#868e96'],['#d55e00','#e69f00','#009e73','#56b4e9'],['#b8f400','#00f5d4','#ff00e5','#ffe600'],['#95d5b2','#52b788','#2d6a4f','#d8f3dc'],['#ff99c8','#fcf6bd','#a9def9','#e4c1f9'],['#ff4d00','#ff8800','#ffc300','#ffee93'],['#00f5a0','#00d9f5','#7b61ff','#ff6ec7'],['#f72585','#7209b7','#3a0ca3','#4cc9f0'],['#6c63ff','#3f8efc','#00c2d1','#b8c0ff']];
 const THEME_NAMES=['Default','Ocean','Sunset','Mono','Colorblind safe','Neon','Forest','Candy','Ember','Aurora','Retro','Midnight'];
 let COL=THEMES[0].slice();
-const DEF={vol:.8,off:0,spd:1,pops:true,flash:!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches),ring:(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)?0:1,theme:0,vdim:.6,hud:'classic',mode:'auto',prev:true,vid:true,cdt:true,hap:true,ui:75,hpPos:'side',keys:['d','f','j','k']};
+const DEF={vol:.8,off:0,spd:1,pops:true,flash:!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches),ring:(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches)?0:1,theme:0,vdim:.6,hud:'classic',mode:'auto',prev:true,vid:true,cdt:true,hap:true,ui:75,hpPos:'side',el:false,hits:false,hsv:60,nsz:1,blurp:true,wake:true,keys:['d','f','j','k']};
 let settings=Object.assign({},DEF),KEYS=DEF.keys.slice();
 try{const st=JSON.parse(localStorage.getItem('fl:settings'));if(st)Object.assign(settings,st)}catch(e){}
 if(!Array.isArray(settings.keys)||settings.keys.length!==4)settings.keys=DEF.keys.slice();
@@ -1163,9 +1193,9 @@ function learn(acc,judged,nps){
   if(diff.auto)autoSet(cur.id,est);else if(!cur.mpTmp)histAdd(cur.id,{d:diff.id,nps,acc,pk:pkd,pr,ts:Date.now()});
   if(!settings.mods.mirror&&!settings.mods.shuffle)laneSave();
 }
-function skillText(){
-  const sk=skillGet(),h=$('skillinfo');h.innerHTML='';const rows=[];
-  if(!sk||!sk.v)rows.push(['Play a few songs and the game will learn your skill.','']);
+function skillRows(){
+  const sk=skillGet(),rows=[];
+  if(!sk||!sk.v)rows.push(['Play a few songs and the game will learn your play style.','']);
   else{
     rows.push(['Speed',sk.v.toFixed(1)+' notes per second']);
     if(sk.pk)rows.push(['Burst skill',sk.pk.toFixed(1)+' notes per second']);
@@ -1174,7 +1204,7 @@ function skillText(){
     ['Kick and bass','Snare and claps','Hi-hats and highs','Vocals and lead'].forEach((nm,i)=>{const v=(sk.cl||[])[i];if(v!=null)rows.push([nm,Math.round(v*100)+'% hit'])});
     rows.push(['Runs learned from',String(sk.n||1)]);
   }
-  rows.forEach(([a,b])=>{const d=document.createElement('div');d.className='rrow';const x=document.createElement('span'),y=document.createElement('span');x.textContent=a;y.textContent=b;d.append(x,y);h.appendChild(d)});
+  return rows;
 }
 function beatPos(a,t){
   const b=a.beatT,n=b.length,P=60/a.bpm;
@@ -1347,7 +1377,7 @@ function beginNow0(){
   syncArt();
   {const v=$('vid');v.hidden=!vidOn;cv.classList.toggle('vid',vidOn||artOn);if(vidOn)vidSetup(v,cur.video);else if(v.getAttribute('src'))vidRelease()}
   state='play';show(null);
-  if(mobile&&navigator.wakeLock)navigator.wakeLock.request('screen').catch(()=>{});
+  if(mobile&&settings.wake!==false&&navigator.wakeLock)navigator.wakeLock.request('screen').catch(()=>{});
 }
 const fmtClock=x=>{x=Math.max(0,Math.round(+x||0));return Math.floor(x/60)+':'+String(x%60).padStart(2,'0')};
 function pauseInfo(){
@@ -1509,7 +1539,22 @@ function rankNotes(){
   });
 }
 function buzz(ms){if(settings.hap&&!replaying&&navigator.vibrate)try{navigator.vibrate(ms)}catch(e){}}
-function pop(txt,col,l){if(settings.pops)pops.push({txt,col,l,age:0})}
+let xpTxt='';
+function setXp(t){
+  xpTxt=String(t||'');const h=$('xpinfo');h.innerHTML='';
+  xpTxt.split('\n').forEach(l=>{if(!l)return;const m=/^(.+?) \+([\d,]+)(?: XP)?$/.exec(l),d=document.createElement('div'),tot=m&&/^Total/.test(m[1]);
+    if(m){d.className='xr'+(tot?' xt':'');const a=document.createElement('span'),b=document.createElement('b');a.textContent=m[1];b.textContent='+'+m[2]+(tot?' XP':'');d.append(a,b)}
+    else{d.className='xr xn';d.textContent=l}
+    h.appendChild(d)});
+}
+function pop(txt,col,l,sub){if(settings.pops)pops.push({txt,col,l,age:0,sub})}
+const timeHint=dt=>settings.el?(dt>0?'early':'late'):undefined;
+function hitTick(big,force){
+  if(!force&&(!settings.hits||replaying||simming))return;
+  try{if(!ac)ac=new (window.AudioContext||window.webkitAudioContext)();if(ac.state==='suspended')ac.resume();if(ac.state!=='running')return;
+    const t=ac.currentTime,o=ac.createOscillator(),v=ac.createGain();o.type='triangle';o.frequency.setValueAtTime(big?1568:1175,t);
+    v.gain.setValueAtTime(.25*((settings.hsv==null?60:settings.hsv)/100),t);v.gain.exponentialRampToValueAtTime(.001,t+.05);o.connect(v);v.connect(ac.destination);o.start(t);o.stop(t+.06)}catch(e){}
+}
 /* The game clock follows the audio clock. When the audio clock stops (phones do this when a video starts or the OS
    interrupts sound) the clock carries on with the system timer instead, so notes and the countdown never freeze.
    clockWatch() notices the stall and, once sound is back, re-aligns the music with the game clock. */
@@ -1550,10 +1595,10 @@ function press(l,tt){
   let best=null;
   for(const n of notes)if(n.l===l&&!n.done&&!n.skip&&!n.missed&&Math.abs(n.t-now)<.16*w&&(!best||Math.abs(n.t-now)<Math.abs(best.t-now)))best=n;
   if(!best)return;
-  const d=Math.abs(best.t-now);best.done=true;buzz(8);laneRun.h[l]++;
+  const d=Math.abs(best.t-now);best.done=true;buzz(8);laneRun.h[l]++;hitTick(d<.05*w);
   if(d<.05*w){counts.perfect++;score+=300;jr(now,3);adj(.014);hpHit(1.5);pop('Perfect','#fff',l)}
-  else if(d<.1*w){counts.good++;score+=200;jr(now,2);adj(.01);hpHit(1);pop('Good',COL[l],l)}
-  else{counts.ok++;score+=100;jr(now,1);adj(.003);hpHit(.3);pop('Ok','#9d95c9',l)}
+  else if(d<.1*w){counts.good++;score+=200;jr(now,2);adj(.01);hpHit(1);pop('Good',COL[l],l,timeHint(best.t-now))}
+  else{counts.ok++;score+=100;jr(now,1);adj(.003);hpHit(.3);pop('Ok','#9d95c9',l,timeHint(best.t-now))}
   combo++;maxCombo=Math.max(maxCombo,combo);
   {const rg=settings.ring==null?1:settings.ring;if(rg&&!simming)fx.push({l,a:0,k:rg})}
 }
@@ -1572,7 +1617,7 @@ function finish(failed){
   $('grade').textContent=gr;$('grade').style.color=gradeCol(gr);
   $('etitle').textContent=cur.name+' ('+diff.name+')'+(failed?' - Failed':'')+(modsLabel()?' ['+modsLabel()+']':'');
   $('stats').innerHTML=(bot?'Botplay run, score not saved<br>':'')+'Score '+score+(nb?' - new best!':' (best '+prev+')')+'<br>Max combo '+maxCombo+'<br>Perfect '+counts.perfect+', Good '+counts.good+', Ok '+counts.ok+', Miss '+counts.miss+'<br>'+Math.round(acc*100)+'% accuracy'+lab;
-  $('xpinfo').textContent=xr.before!==undefined?finishXpMsg(xr):xr.msg;mpFinishHook(acc,gr,failed);plEndHook();show('end');
+  setXp(xr.before!==undefined?finishXpMsg(xr):xr.msg);mpFinishHook(acc,gr,failed);plEndHook();show('end');
 }
 
 /* ---------- render ---------- */
@@ -1615,7 +1660,7 @@ function frame(){
     if(state==='play'&&!n.missed&&now-n.t>.16*diff.win){n.missed=true;counts.miss++;buzz(28);combo=0;adj(-.05);hpHit(-8*(diff.hpm||1));jr(now,0);laneRun.m[n.l]++;pop('Miss','#ff5d8f',n.l)}
     const y=HIT-(n.t-now)*sp;
     if(y<-30||y>H+30)continue;
-    g.globalAlpha=(n.missed?.25:1)*(settings.mods.fade?Math.max(0,1-Math.max(0,(y/HIT-.45)/.3)):1);g.fillStyle=COL[n.l];g.beginPath();g.roundRect(n.l*LW+10,y-(mobile?18:13),LW-20,mobile?36:26,9);g.fill();g.globalAlpha=1;
+    g.globalAlpha=(n.missed?.25:1)*(settings.mods.fade?Math.max(0,1-Math.max(0,(y/HIT-.45)/.3)):1);g.fillStyle=COL[n.l];g.beginPath();const nh=(mobile?36:26)*[.75,1,1.3][settings.nsz==null?1:settings.nsz];g.roundRect(n.l*LW+10,y-nh/2,LW-20,nh,Math.min(9,nh/2.5));g.fill();g.globalAlpha=1;
   }catch(e){g.globalAlpha=1;oops(e)}
   if(failNow&&state==='play'){failNow=false;finish(true)}
   if(state==='play'&&now>endT+1.2)finish();
@@ -1623,7 +1668,7 @@ function frame(){
   if(fx.length){for(const f of fx){const bd=f.k===2;g.globalAlpha=Math.max(0,(bd?.95:.7)-f.a*(bd?.055:.05));g.strokeStyle=COL[f.l];g.lineWidth=bd?5:3;g.beginPath();g.arc(f.l*LW+LW/2,HIT,16+f.a*(bd?3.6:2.4),0,6.283);g.stroke();if(state==='play')f.a++}g.globalAlpha=1;fx=fx.filter(f=>f.a<(f.k===2?17:14))}
   pops=pops.filter(p=>p.age<30);
   g.font='800 18px Bricolage Grotesque,system-ui,sans-serif';
-  for(const p of pops){g.globalAlpha=1-p.age/30;g.fillStyle=p.col==='#fff'?INK:p.col;g.fillText(p.txt,p.l*LW+LW/2,HIT-34-p.age*.8)}
+  for(const p of pops){g.globalAlpha=1-p.age/30;g.fillStyle=p.col==='#fff'?INK:p.col;g.fillText(p.txt,p.l*LW+LW/2,HIT-34-p.age*.8);if(p.sub){g.font='800 12px Bricolage Grotesque,system-ui,sans-serif';g.fillText(p.sub,p.l*LW+LW/2,HIT-20-p.age*.8);g.font='800 18px Bricolage Grotesque,system-ui,sans-serif'}}
   g.globalAlpha=1;
   try{drawHud(now)}catch(e){g.globalAlpha=1;oops(e)}
   try{drawCd(now)}catch(e){g.globalAlpha=1;oops(e)}
@@ -2385,7 +2430,7 @@ function mpFinalize(){
   const bonus=pos===1?60:pos===2?30:pos===3?15:10,before=lvlOf(prof.xp);
   prof.xp+=bonus;saveProf();
   ach('mp1');if(pos===1)ach('mpw');
-  const el=$('xpinfo');el.textContent+='\nMultiplayer: '+ord(pos)+' of '+n+' +'+bonus+' XP'+(lvlOf(prof.xp)>before?'\nLevel up! You are now level '+lvlOf(prof.xp):'');
+  setXp(xpTxt+'\nMultiplayer: '+ord(pos)+' of '+n+' +'+bonus+' XP'+(lvlOf(prof.xp)>before?'\nLevel up! You are now level '+lvlOf(prof.xp):''));
   toast('You placed '+ord(pos)+' of '+n+'. +'+bonus+' XP');
 }
 function mpToLobby(){
@@ -2523,7 +2568,7 @@ function finishReplay(failed){
   $('grade').textContent=r.grade;$('grade').style.color=gradeCol(r.grade);
   $('etitle').textContent='Replay: '+r.songName+' ('+r.diffName+')';
   $('stats').innerHTML='Score '+r.score+'<br>Max combo '+r.maxCombo+'<br>Perfect '+c.perfect+', Good '+c.good+', Ok '+c.ok+', Miss '+c.miss+'<br>'+(r.acc*100).toFixed(1)+'% accuracy'+(rpGhost?'<br>Top run: '+rpGhost.score+(r.score>=rpGhost.score?' (matched or beaten)':' ('+(rpGhost.score-r.score)+' ahead)'):'');
-  $('xpinfo').textContent='Replays do not earn XP or change your scores';
+  setXp('Replays do not earn XP or change your scores');
   show('end');
 }
 function drawCmp(a,b){
@@ -2653,14 +2698,14 @@ function syncSettings(){
   $('vol').value=Math.round(settings.vol*100);$('volv').textContent=Math.round(settings.vol*100)+'%';
   $('spd').value=Math.round(settings.spd*100);$('spdv').textContent=settings.spd.toFixed(2)+'x';
   $('off').value=settings.off;$('offv').textContent=(settings.off>0?'+':'')+settings.off+' ms';
-  $('uis').value=settings.ui||75;$('uisv').textContent=(settings.ui||75)+'%';$('vdim').value=Math.round(settings.vdim*100);$('vdv').textContent=Math.round(settings.vdim*100)+'%';$('vofs').value=settings.vofs||0;$('vofv').textContent=((settings.vofs||0)>0?'+':'')+(settings.vofs||0)+' ms';$('vfbtn').textContent=settings.vfit?'Fit':'Fill';applyVidFit();$('rngbtn').textContent=['Off','Subtle','Bold'][settings.ring==null?1:settings.ring];renderThemes();renderExtra();
-  [['popbtn','pops'],['flbtn','flash'],['prvbtn','prev'],['vdbtn','vid'],['cdbtn','cdt'],['hapbtn','hap']].forEach(([id,k])=>{const b=$(id);b.textContent=settings[k]?'On':'Off';b.setAttribute('aria-pressed',settings[k])});
+  $('uis').value=settings.ui||75;$('uisv').textContent=(settings.ui||75)+'%';$('vdim').value=Math.round(settings.vdim*100);$('vdv').textContent=Math.round(settings.vdim*100)+'%';$('vofs').value=settings.vofs||0;$('vofv').textContent=((settings.vofs||0)>0?'+':'')+(settings.vofs||0)+' ms';$('vfbtn').textContent=settings.vfit?'Fit':'Fill';applyVidFit();$('rngbtn').textContent=['Off','Subtle','Bold'][settings.ring==null?1:settings.ring];$('hsv').value=settings.hsv==null?60:settings.hsv;$('hsvv').textContent=$('hsv').value+'%';$('nzbtn').textContent=['Slim','Normal','Chunky'][settings.nsz==null?1:settings.nsz];renderThemes();renderExtra();
+  [['popbtn','pops'],['flbtn','flash'],['prvbtn','prev'],['vdbtn','vid'],['cdbtn','cdt'],['hapbtn','hap'],['elbtn','el'],['hsbtn','hits'],['pbbtn','blurp'],['wkbtn','wake']].forEach(([id,k])=>{const b=$(id);b.textContent=settings[k]?'On':'Off';b.setAttribute('aria-pressed',settings[k])});
   renderKeys();
 }
 $('vol').oninput=e=>{settings.vol=e.target.value/100;saveSettings();syncSettings()};
 $('spd').oninput=e=>{settings.spd=e.target.value/100;saveSettings();syncSettings()};
 $('off').oninput=e=>{settings.off=+e.target.value;saveSettings();syncSettings()};
-[['popbtn','pops'],['flbtn','flash'],['prvbtn','prev'],['vdbtn','vid'],['cdbtn','cdt'],['hapbtn','hap']].forEach(([id,k])=>{$(id).onclick=()=>{settings[k]=!settings[k];saveSettings();syncSettings();if(k==='vid')applyVid()}});
+[['popbtn','pops'],['flbtn','flash'],['prvbtn','prev'],['vdbtn','vid'],['cdbtn','cdt'],['hapbtn','hap'],['elbtn','el'],['hsbtn','hits'],['pbbtn','blurp'],['wkbtn','wake']].forEach(([id,k])=>{$(id).onclick=()=>{settings[k]=!settings[k];saveSettings();syncSettings();if(k==='vid')applyVid()}});
 $('rkeys').onclick=()=>{KEYS=DEF.keys.slice();settings.keys=KEYS.slice();rebind=null;saveSettings();syncSettings()};
 const THEME_ROOT=document.documentElement;
 function applyTheme(i){settings.theme=i;COL=THEMES[i].slice();COL.forEach((c,j)=>THEME_ROOT.style.setProperty('--c'+j,c))}
@@ -2673,13 +2718,21 @@ function renderThemes(){
 }
 applyTheme(settings.theme||0);
 {const voStep=d=>{const x=SONGS[selS];if(!x||!x.lib||!x.isVideo)return;x.voff=Math.max(-1000,Math.min(1000,d===0?0:(x.voff||0)+d));libSave(x,{voff:x.voff});renderMenu()};$('vom').onclick=()=>voStep(-50);$('vop').onclick=()=>voStep(50);$('vsync').onclick=()=>voStep(0)}
-$('vofs').oninput=e=>{settings.vofs=+e.target.value;saveSettings();syncSettings()};$('vfbtn').onclick=()=>{settings.vfit=!settings.vfit;saveSettings();syncSettings();if(cur&&(state==='play'||state==='pause'))syncArt()};$('rngbtn').onclick=()=>{settings.ring=((settings.ring==null?1:settings.ring)+1)%3;saveSettings();syncSettings()};
+$('vofs').oninput=e=>{settings.vofs=+e.target.value;saveSettings();syncSettings()};$('vfbtn').onclick=()=>{settings.vfit=!settings.vfit;saveSettings();syncSettings();if(cur&&(state==='play'||state==='pause'))syncArt()};let setTab='play';
+function showSetTab(t){setTab=t;document.querySelectorAll('#settabs [data-t]').forEach(b=>{b.setAttribute('aria-selected',b.dataset.t===t?'true':'false');b.tabIndex=b.dataset.t===t?0:-1});document.querySelectorAll('#settings .tabp').forEach(p=>{p.hidden=p.dataset.p!==t});$('settings').scrollTop=0}
+document.querySelectorAll('#settabs [data-t]').forEach((b,i,all)=>{b.onclick=()=>showSetTab(b.dataset.t);b.onkeydown=e=>{const d=e.key==='ArrowRight'?1:e.key==='ArrowLeft'?-1:0;if(d){e.preventDefault();const n=all[(i+d+all.length)%all.length];showSetTab(n.dataset.t);n.focus()}}});
+$('hsv').oninput=e=>{settings.hsv=+e.target.value;saveSettings();syncSettings();hitTick(true,true)};
+$('nzbtn').onclick=()=>{settings.nsz=((settings.nsz==null?1:settings.nsz)+1)%3;saveSettings();syncSettings()};
+if(!document.documentElement.requestFullscreen)$('fsrow').style.display='none';
+$('fsbtn').onclick=()=>{try{if(document.fullscreenElement)document.exitFullscreen();else document.documentElement.requestFullscreen()}catch(e){}};
+{let arm=0;$('rsbtn').onclick=()=>{if(!arm){arm=1;$('rsbtn').textContent='Tap again to confirm';setTimeout(()=>{arm=0;$('rsbtn').textContent='Reset to defaults'},3500);return}try{localStorage.removeItem('fl:settings')}catch(e){}$('rsbtn').textContent='Resetting...';setTimeout(()=>location.reload(),400)}}
+$('rngbtn').onclick=()=>{settings.ring=((settings.ring==null?1:settings.ring)+1)%3;saveSettings();syncSettings()};
 $('vdim').oninput=e=>{settings.vdim=e.target.value/100;saveSettings();syncSettings()};
 function applyUi(){document.documentElement.style.setProperty('--ui',(settings.ui||75)/100)}
 $('uis').oninput=e=>{settings.ui=+e.target.value;saveSettings();applyUi();syncSettings()};
 $('uisreset').onclick=()=>{settings.ui=75;saveSettings();applyUi();syncSettings()};
 let setFrom='menu',cal=null;
-function openSettings(from){setFrom=from;rebind=null;$('calbtn').disabled=from==='pause';syncSettings();show('settings')}
+function openSettings(from){setFrom=from;rebind=null;$('calbtn').disabled=from==='pause';syncSettings();showSetTab(setTab);show('settings')}
 $('setbtn').onclick=()=>openSettings('menu');
 $('psettings').onclick=()=>openSettings('pause');
 $('setback').onclick=()=>{rebind=null;if(setFrom==='pause')show('pause');else{renderMenu();show('menu')}};
@@ -3038,18 +3091,13 @@ function renderProf(){
     const t=document.createElement('span');t.textContent=(it.d?'\u2605 ':'\u2606 ')+m[1]+': '+Math.min(it.p,m[2])+'/'+m[2]+' (+'+m[3]+' XP)';
     t.style.fontWeight=it.d?'800':'500';row.appendChild(t);mh.appendChild(row);
   });
-  const th=$('ptop');th.innerHTML='';
-  const tp=ratingList().sort((a,b)=>b.r-a.r).slice(0,10);
-  if(!tp.length){const p=document.createElement('p');p.textContent='Clear songs to build your rating. It is the average of your best 10 charts.';th.appendChild(p)}
-  tp.forEach((x,i)=>{const row=document.createElement('div');row.className='rrow';const t=document.createElement('span');t.textContent=(i+1)+'. '+x.n+' ('+x.d+') | '+x.r.toFixed(2)+' | '+(x.acc*100).toFixed(1)+'% | chart '+x.c.toFixed(1);row.appendChild(t);th.appendChild(row)});
-  $('pstats').textContent='Songs played '+prof.plays+' | Clears '+prof.clears+' | Notes hit '+prof.hits+' | Perfects '+prof.perfects+' | Best combo '+prof.bestCombo+' | Achievements '+Object.keys(prof.ach).length+' of '+ACH.length;
 }
 function renderAch(){
   const h=$('achlist');h.innerHTML='';
   ACH.forEach(a=>{const p=document.createElement('p'),d=!!prof.ach[a[0]];p.textContent=(d?'\u2605 ':'\u2606 ')+a[1]+': '+a[2]+(d?' (unlocked)':'');p.style.color=d?'var(--ink)':'var(--dim)';p.style.fontWeight=d?'800':'500';h.appendChild(p)});
   $('achsum').textContent=Object.keys(prof.ach).length+' of '+ACH.length+' unlocked. Each gives 50 bonus XP.';
 }
-$('profbtn').onclick=()=>{renderProf();show('prof');skillText();try{const t=+localStorage.getItem('fl:lastbk');$('bkmsg').textContent=t?'Last backup file: '+new Date(t).toLocaleDateString()+'.':'No backup file saved yet.'}catch(e){}};
+$('profbtn').onclick=()=>{renderProf();show('prof');try{const t=+localStorage.getItem('fl:lastbk');$('bkmsg').textContent=t?'Last backup file: '+new Date(t).toLocaleDateString()+'.':'No backup file saved yet.'}catch(e){}};
 $('ptitle').onchange=e=>{prof.title=+e.target.value;saveProf();renderProf()};
 $('pbadge').onchange=e=>{prof.badge=+e.target.value;saveProf();renderProf()};
 $('uname').oninput=e=>{prof.name=e.target.value.replace(/[<>]/g,'').trim().slice(0,16)||'Player';saveProf()};
@@ -3116,6 +3164,12 @@ function renderMore(){
   DIFFS.forEach(d=>{const x=rs.byDiff[d.id];if(x)rankKids.push(miRow(d.name,x.n+' ranked | best '+gradeOf(x.best)))});
   body.appendChild(miCard('Best ranks',...rankKids));
 
+  /* top plays */
+  {const tp=rl.slice(0,10);body.appendChild(miCard('Top plays',...(tp.length?tp.map((x,i)=>miRow((i+1)+'. '+x.n+' ('+x.d+')',x.r.toFixed(2)+' | '+(x.acc*100).toFixed(1)+'%')):[miNote('Clear songs to build your rating.')])))}
+
+  /* play style */
+  {const sr=skillRows();body.appendChild(miCard('Play style',...sr.map(([a,b])=>b?miRow(a,b):miNote(a)),miNote('Learned from your runs. Auto uses it to pick a level for you.')))}
+
   /* collection */
   const libs=SONGS.filter(x=>x.lib).length,na=Object.keys(prof.ach).length;
   body.appendChild(miCard('Collection',miGrid([
@@ -3127,6 +3181,14 @@ function renderMore(){
   const rc=Object.entries(prof.ach).filter(([,v])=>typeof v==='number'&&v>1e12).sort((a,b)=>b[1]-a[1]).slice(0,5);
   const recent=rc.map(([id,v])=>{const a=ACH.find(x=>x[0]===id);return a?miRow(a[1],new Date(v).toLocaleDateString()):null}).filter(Boolean);
   body.appendChild(miCard('Recent achievements',...(recent.length?recent:[miNote('Nothing unlocked yet. Open Achievements to see what to aim for.')])));
+
+  /* recent plays, from saved replays */
+  const rpc=miCard('Recent plays',miNote('Loading...'));body.appendChild(rpc);
+  Promise.resolve().then(()=>dbAll('replays')).then(rows=>{
+    const kids=(rows||[]).sort((a,b)=>b.ts-a.ts).slice(0,6).map(r=>miRow(r.songName+' ('+r.diffName+')',(r.failed?'Failed':r.grade)+' | '+fmtN(r.score)));
+    while(rpc.children.length>1)rpc.removeChild(rpc.lastChild);
+    (kids.length?kids:[miNote('Play a song and your recent runs show up here.')]).forEach(k=>rpc.appendChild(k));
+  }).catch(()=>{while(rpc.children.length>1)rpc.removeChild(rpc.lastChild);rpc.appendChild(miNote('Recent plays are not available here.'))});
 
   /* today */
   const dm=dailyEnsure(),dn=dm.list.filter(x=>x.d).length;
@@ -3247,8 +3309,9 @@ document.addEventListener('keydown',e=>{
     if(k==='Enter'){e.preventDefault();($('nextbtn').hidden?$('again'):$('nextbtn')).click()}
     else if(k==='Escape')$('back').click();
   }else if(state==='pause'&&vis('pause')&&k==='Enter'){e.preventDefault();resume()}
+  else if(state==='menu'&&k==='Escape'){const m={prof:'profback',pmore:'pmback',ach:'achback',mods:'modsback',replays:'rpback',tut:'tutok',mp:'mpback0',mpjoin:'mpback1',deldata:'ddback'};for(const id in m){if($(id)&&vis(id)){$(m[id]).click();break}}}
 });
-window.addEventListener('blur',()=>{if(!mobile&&state==='play'&&!replaying&&!(mp&&mp.playing))pause()});
+window.addEventListener('blur',()=>{if(!mobile&&settings.blurp!==false&&state==='play'&&!replaying&&!(mp&&mp.playing))pause()});
 applyUi();loadLibrary();renderMenu();show('menu');try{if(!localStorage.getItem('fl:seen')){localStorage.setItem('fl:seen','1');show('tut')}}catch(e){}draw();
 })();
 </script>
